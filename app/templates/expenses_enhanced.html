@@ -1,0 +1,1355 @@
+{% extends "base_enhanced.html" %}
+
+{% block title %}My Expenses - Expense Tracker{% endblock %}
+
+{% block description %}Manage and track your personal expenses with detailed categorization and analytics{% endblock %}
+
+{% block extra_head %}
+<style>
+    /* ========================================
+       EXPENSES PAGE SPECIFIC STYLES
+    ======================================== */
+    
+    .add-expense-section {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 15px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        color: white;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .add-expense-section::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -50%;
+        width: 100%;
+        height: 100%;
+        background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M20 20h60v60H20z' fill='none' stroke='rgba(255,255,255,0.1)' stroke-width='2'/%3E%3C/svg%3E") repeat;
+        opacity: 0.1;
+        z-index: 0;
+    }
+    
+    .add-expense-section * {
+        position: relative;
+        z-index: 1;
+    }
+    
+    .add-expense-form {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 10px;
+        padding: 1.5rem;
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    
+    .add-expense-form .form-control {
+        background: rgba(255, 255, 255, 0.9);
+        border: none;
+        border-radius: 8px;
+        transition: all 0.3s ease;
+    }
+    
+    .add-expense-form .form-control:focus {
+        background: rgba(255, 255, 255, 1);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+    
+    .add-expense-form .form-label {
+        color: white;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+    
+    .add-expense-form .form-label .required {
+        color: #ffeb3b;
+        margin-left: 2px;
+    }
+    
+    .btn-add-expense {
+        background: linear-gradient(135deg, #56ab2f, #a8e6cf);
+        border: none;
+        border-radius: 10px;
+        padding: 0.75rem 2rem;
+        font-weight: 600;
+        color: white;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .btn-add-expense:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        color: white;
+    }
+    
+    .btn-add-expense:focus {
+        color: white;
+        box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.3);
+    }
+    
+    .btn-add-expense:active {
+        transform: translateY(0);
+    }
+    
+    /* Expenses header with improved responsive design */
+    .expenses-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+    
+    .expenses-title {
+        color: #2c3e50;
+        font-size: 1.8rem;
+        font-weight: 700;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    /* Enhanced expense cards for mobile */
+    .expense-card {
+        background: white;
+        border-radius: 12px;
+        padding: 1.25rem;
+        margin-bottom: 1rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        border: 1px solid #e9ecef;
+        transition: all 0.3s ease;
+        position: relative;
+    }
+    
+    .expense-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+    }
+    
+    .expense-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 0.75rem;
+    }
+    
+    .expense-title {
+        font-weight: 600;
+        color: #2c3e50;
+        margin: 0;
+        font-size: 1.1rem;
+    }
+    
+    .expense-amount {
+        font-weight: 700;
+        font-size: 1.2rem;
+        color: #e74c3c;
+    }
+    
+    .expense-meta {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.9rem;
+        color: #6c757d;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+    
+    .expense-category {
+        background: #f8f9fa;
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 500;
+        color: #495057;
+    }
+    
+    .expense-date {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+    
+    .expense-actions {
+        margin-top: 1rem;
+        display: flex;
+        gap: 0.5rem;
+        justify-content: flex-end;
+    }
+    
+    /* Mobile-first responsive table */
+    .expenses-table-container {
+        display: none; /* Hidden on mobile by default */
+    }
+    
+    .expenses-cards-container {
+        display: block; /* Shown on mobile by default */
+    }
+    
+    /* Responsive breakpoints */
+    @media (min-width: 768px) {
+        .expenses-table-container {
+            display: block;
+        }
+        
+        .expenses-cards-container {
+            display: none;
+        }
+        
+        .add-expense-form {
+            padding: 2rem;
+        }
+        
+        .expenses-title {
+            font-size: 2rem;
+        }
+    }
+    
+    /* Mobile optimizations */
+    @media (max-width: 767px) {
+        .add-expense-section {
+            padding: 1.5rem;
+            margin-left: -0.5rem;
+            margin-right: -0.5rem;
+            border-radius: 10px;
+        }
+        
+        .add-expense-form {
+            padding: 1rem;
+        }
+        
+        .expenses-header {
+            flex-direction: column;
+            align-items: flex-start;
+            text-align: center;
+            width: 100%;
+        }
+        
+        .expenses-title {
+            font-size: 1.5rem;
+            text-align: center;
+            width: 100%;
+        }
+        
+        .btn-add-expense {
+            width: 100%;
+            padding: 1rem;
+            font-size: 1rem;
+        }
+        
+        .expense-card {
+            margin-left: -0.5rem;
+            margin-right: -0.5rem;
+            border-radius: 8px;
+        }
+        
+        .expense-card-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.5rem;
+        }
+        
+        .expense-amount {
+            font-size: 1.4rem;
+        }
+        
+        .expense-meta {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.75rem;
+        }
+        
+        .expense-actions {
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+    }
+    
+    @media (max-width: 576px) {
+        .container {
+            padding-left: 0.75rem;
+            padding-right: 0.75rem;
+        }
+        
+        .add-expense-section {
+            margin-left: -0.25rem;
+            margin-right: -0.25rem;
+        }
+        
+        .expense-card {
+            margin-left: -0.25rem;
+            margin-right: -0.25rem;
+            padding: 1rem;
+        }
+        
+        .expense-actions .btn {
+            font-size: 0.85rem;
+            padding: 0.375rem 0.75rem;
+        }
+    }
+    
+    /* Enhanced table styling for desktop */
+    .table-responsive {
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        background: white;
+    }
+    
+    .table {
+        margin-bottom: 0;
+    }
+    
+    .table thead th {
+        background: #f8f9fa;
+        border-bottom: 2px solid #dee2e6;
+        font-weight: 600;
+        color: #495057;
+        padding: 1rem 0.75rem;
+    }
+    
+    .table tbody tr {
+        transition: background-color 0.2s ease;
+    }
+    
+    .table tbody tr:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .table td {
+        padding: 0.75rem;
+        vertical-align: middle;
+    }
+    
+    /* Loading state for expenses */
+    .expenses-loading {
+        text-align: center;
+        padding: 3rem;
+        color: #6c757d;
+    }
+    
+    .expenses-loading .spinner-border {
+        width: 3rem;
+        height: 3rem;
+        margin-bottom: 1rem;
+    }
+    
+    /* Filter and search bar */
+    .expenses-filters {
+        background: white;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        border: 1px solid #e9ecef;
+    }
+    
+    .filter-group {
+        margin-bottom: 1rem;
+    }
+    
+    .filter-group:last-child {
+        margin-bottom: 0;
+    }
+    
+    .filter-label {
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        color: #495057;
+    }
+    
+    /* High contrast mode improvements */
+    @media (prefers-contrast: high) {
+        .expense-card {
+            border: 2px solid #000;
+        }
+        
+        .add-expense-section {
+            border: 2px solid #fff;
+        }
+        
+        .table {
+            border: 2px solid #000;
+        }
+    }
+    
+    /* Print styles */
+    @media print {
+        .add-expense-section,
+        .expenses-filters,
+        .expense-actions,
+        .btn {
+            display: none !important;
+        }
+        
+        .expense-card {
+            break-inside: avoid;
+            box-shadow: none;
+            border: 1px solid #000;
+        }
+        
+        .table {
+            font-size: 12px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <!-- Add Expense Section -->
+        <section class="add-expense-section" aria-labelledby="add-expense-title">
+            <h2 id="add-expense-title" class="mb-4">
+                <i class="bi bi-plus-circle-fill" aria-hidden="true"></i>
+                Add New Expense
+            </h2>
+            
+            <form id="expense-form" class="add-expense-form" novalidate>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label for="expense-title" class="form-label">
+                            Title
+                            <span class="required" aria-label="required">*</span>
+                        </label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="expense-title" 
+                               name="title" 
+                               required
+                               aria-describedby="title-help"
+                               placeholder="e.g., Lunch at restaurant">
+                        <div id="title-help" class="form-text text-white-50">
+                            Describe what this expense was for
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <label for="expense-amount" class="form-label">
+                            Amount
+                            <span class="required" aria-label="required">*</span>
+                        </label>
+                        <div class="input-group">
+                            <span class="input-group-text">$</span>
+                            <input type="number" 
+                                   class="form-control" 
+                                   id="expense-amount" 
+                                   name="amount" 
+                                   step="0.01" 
+                                   min="0" 
+                                   required
+                                   aria-describedby="amount-help"
+                                   placeholder="0.00">
+                        </div>
+                        <div id="amount-help" class="form-text text-white-50">
+                            Enter the expense amount in dollars
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <label for="expense-category" class="form-label">
+                            Category
+                            <span class="required" aria-label="required">*</span>
+                        </label>
+                        <select class="form-control" 
+                                id="expense-category" 
+                                name="category" 
+                                required
+                                aria-describedby="category-help">
+                            <option value="">Select a category</option>
+                            <option value="Food & Dining">Food & Dining</option>
+                            <option value="Transportation">Transportation</option>
+                            <option value="Shopping">Shopping</option>
+                            <option value="Entertainment">Entertainment</option>
+                            <option value="Bills & Utilities">Bills & Utilities</option>
+                            <option value="Health & Medical">Health & Medical</option>
+                            <option value="Travel">Travel</option>
+                            <option value="Education">Education</option>
+                            <option value="Other">Other</option>
+                        </select>
+                        <div id="category-help" class="form-text text-white-50">
+                            Choose the most appropriate category
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <label for="expense-date" class="form-label">
+                            Date
+                            <span class="required" aria-label="required">*</span>
+                        </label>
+                        <input type="date" 
+                               class="form-control" 
+                               id="expense-date" 
+                               name="date" 
+                               required
+                               aria-describedby="date-help">
+                        <div id="date-help" class="form-text text-white-50">
+                            When did this expense occur?
+                        </div>
+                    </div>
+                    
+                    <div class="col-12">
+                        <button type="submit" class="btn btn-add-expense">
+                            <i class="bi bi-plus-lg" aria-hidden="true"></i>
+                            Add Expense
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </section>
+
+        <!-- Expenses List Section -->
+        <section aria-labelledby="expenses-list-title">
+            <div class="expenses-header">
+                <h2 id="expenses-list-title" class="expenses-title">
+                    <i class="bi bi-receipt-cutoff" aria-hidden="true"></i>
+                    My Expenses
+                </h2>
+                <div class="d-flex gap-2 flex-wrap">
+                    <button type="button" 
+                            class="btn btn-outline-primary btn-sm" 
+                            onclick="toggleFilters()"
+                            aria-expanded="false"
+                            aria-controls="expenses-filters">
+                        <i class="bi bi-funnel" aria-hidden="true"></i>
+                        Filters
+                    </button>
+                    <button type="button" 
+                            class="btn btn-outline-secondary btn-sm" 
+                            onclick="refreshExpenses()"
+                            aria-label="Refresh expenses list">
+                        <i class="bi bi-arrow-clockwise" aria-hidden="true"></i>
+                        Refresh
+                    </button>
+                </div>
+            </div>
+
+            <!-- Filters Section (Initially Hidden) -->
+            <div id="expenses-filters" class="expenses-filters" style="display: none;" role="region" aria-labelledby="filters-title">
+                <h3 id="filters-title" class="h5 mb-3">
+                    <i class="bi bi-funnel-fill" aria-hidden="true"></i>
+                    Filter Expenses
+                </h3>
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label for="filter-category" class="filter-label">Category</label>
+                        <select class="form-control" id="filter-category" name="filter-category">
+                            <option value="">All Categories</option>
+                            <option value="Food & Dining">Food & Dining</option>
+                            <option value="Transportation">Transportation</option>
+                            <option value="Shopping">Shopping</option>
+                            <option value="Entertainment">Entertainment</option>
+                            <option value="Bills & Utilities">Bills & Utilities</option>
+                            <option value="Health & Medical">Health & Medical</option>
+                            <option value="Travel">Travel</option>
+                            <option value="Education">Education</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="filter-date-from" class="filter-label">From Date</label>
+                        <input type="date" class="form-control" id="filter-date-from" name="filter-date-from">
+                    </div>
+                    <div class="col-md-4">
+                        <label for="filter-date-to" class="filter-label">To Date</label>
+                        <input type="date" class="form-control" id="filter-date-to" name="filter-date-to">
+                    </div>
+                    <div class="col-12">
+                        <button type="button" class="btn btn-primary me-2" onclick="applyFilters()">
+                            <i class="bi bi-check-lg" aria-hidden="true"></i>
+                            Apply Filters
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" onclick="clearFilters()">
+                            <i class="bi bi-x-lg" aria-hidden="true"></i>
+                            Clear Filters
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Loading State -->
+            <div id="expenses-loading" class="expenses-loading" style="display: none;" role="status" aria-live="polite">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="sr-only">Loading expenses...</span>
+                </div>
+                <p>Loading your expenses...</p>
+            </div>
+
+            <!-- Empty State -->
+            <div id="expenses-empty" class="empty-state" style="display: none;" role="region" aria-labelledby="empty-title">
+                <div class="empty-state-icon">
+                    <i class="bi bi-receipt" aria-hidden="true"></i>
+                </div>
+                <h3 id="empty-title">No expenses found</h3>
+                <p>Start tracking your expenses by adding your first one above.</p>
+                <button class="btn btn-primary" onclick="document.getElementById('expense-title').focus()">
+                    <i class="bi bi-plus-lg" aria-hidden="true"></i>
+                    Add Your First Expense
+                </button>
+            </div>
+
+            <!-- Mobile Cards View -->
+            <div id="expenses-cards" class="expenses-cards-container" role="region" aria-labelledby="expenses-list-title">
+                <!-- Cards will be populated by JavaScript -->
+            </div>
+
+            <!-- Desktop Table View -->
+            <div id="expenses-table-container" class="expenses-table-container" role="region" aria-labelledby="expenses-list-title">
+                <div class="table-responsive">
+                    <table class="table table-hover" role="table" aria-label="Expenses list">
+                        <thead>
+                            <tr role="row">
+                                <th scope="col" role="columnheader">
+                                    <button type="button" class="btn btn-link p-0 text-decoration-none text-dark" onclick="sortExpenses('title')">
+                                        Title
+                                        <i class="bi bi-arrow-down-up" aria-hidden="true"></i>
+                                    </button>
+                                </th>
+                                <th scope="col" role="columnheader">
+                                    <button type="button" class="btn btn-link p-0 text-decoration-none text-dark" onclick="sortExpenses('amount')">
+                                        Amount
+                                        <i class="bi bi-arrow-down-up" aria-hidden="true"></i>
+                                    </button>
+                                </th>
+                                <th scope="col" role="columnheader">Category</th>
+                                <th scope="col" role="columnheader">
+                                    <button type="button" class="btn btn-link p-0 text-decoration-none text-dark" onclick="sortExpenses('date')">
+                                        Date
+                                        <i class="bi bi-arrow-down-up" aria-hidden="true"></i>
+                                    </button>
+                                </th>
+                                <th scope="col" role="columnheader">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="expenses-table-body" role="rowgroup">
+                            <!-- Table rows will be populated by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </div>
+</div>
+
+<!-- Edit Expense Modal -->
+<div class="modal fade" id="editExpenseModal" tabindex="-1" aria-labelledby="editExpenseModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editExpenseModalLabel">
+                    <i class="bi bi-pencil-square" aria-hidden="true"></i>
+                    Edit Expense
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="edit-expense-form" novalidate>
+                    <input type="hidden" id="edit-expense-id" name="id">
+                    
+                    <div class="mb-3">
+                        <label for="edit-expense-title" class="form-label">
+                            Title
+                            <span class="text-danger" aria-label="required">*</span>
+                        </label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="edit-expense-title" 
+                               name="title" 
+                               required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="edit-expense-amount" class="form-label">
+                            Amount
+                            <span class="text-danger" aria-label="required">*</span>
+                        </label>
+                        <div class="input-group">
+                            <span class="input-group-text">$</span>
+                            <input type="number" 
+                                   class="form-control" 
+                                   id="edit-expense-amount" 
+                                   name="amount" 
+                                   step="0.01" 
+                                   min="0" 
+                                   required>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="edit-expense-category" class="form-label">
+                            Category
+                            <span class="text-danger" aria-label="required">*</span>
+                        </label>
+                        <select class="form-control" id="edit-expense-category" name="category" required>
+                            <option value="">Select a category</option>
+                            <option value="Food & Dining">Food & Dining</option>
+                            <option value="Transportation">Transportation</option>
+                            <option value="Shopping">Shopping</option>
+                            <option value="Entertainment">Entertainment</option>
+                            <option value="Bills & Utilities">Bills & Utilities</option>
+                            <option value="Health & Medical">Health & Medical</option>
+                            <option value="Travel">Travel</option>
+                            <option value="Education">Education</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="edit-expense-date" class="form-label">
+                            Date
+                            <span class="text-danger" aria-label="required">*</span>
+                        </label>
+                        <input type="date" 
+                               class="form-control" 
+                               id="edit-expense-date" 
+                               name="date" 
+                               required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-lg" aria-hidden="true"></i>
+                    Cancel
+                </button>
+                <button type="button" class="btn btn-primary" onclick="saveExpenseChanges()">
+                    <i class="bi bi-check-lg" aria-hidden="true"></i>
+                    Save Changes
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteExpenseModal" tabindex="-1" aria-labelledby="deleteExpenseModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="deleteExpenseModalLabel">
+                    <i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i>
+                    Confirm Delete
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete this expense?</p>
+                <div id="delete-expense-details" class="alert alert-light">
+                    <!-- Expense details will be populated here -->
+                </div>
+                <p class="text-muted">
+                    <small>
+                        <i class="bi bi-info-circle" aria-hidden="true"></i>
+                        This action cannot be undone.
+                    </small>
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-lg" aria-hidden="true"></i>
+                    Cancel
+                </button>
+                <button type="button" class="btn btn-danger" id="confirm-delete-btn">
+                    <i class="bi bi-trash" aria-hidden="true"></i>
+                    Delete Expense
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // Enhanced expenses management with accessibility and UX improvements
+    let expenses = [];
+    let filteredExpenses = [];
+    let currentSortField = 'date';
+    let currentSortDirection = 'desc';
+    let editingExpenseId = null;
+    let deletingExpenseId = null;
+
+    // Initialize page
+    document.addEventListener('DOMContentLoaded', function() {
+        // Set default date to today
+        document.getElementById('expense-date').value = new Date().toISOString().split('T')[0];
+        
+        // Load expenses
+        loadExpenses();
+        
+        // Setup form submission
+        setupFormHandlers();
+        
+        // Setup keyboard shortcuts
+        setupKeyboardShortcuts();
+        
+        // Setup filter change handlers
+        setupFilterHandlers();
+    });
+
+    function setupFormHandlers() {
+        const expenseForm = document.getElementById('expense-form');
+        const editForm = document.getElementById('edit-expense-form');
+
+        expenseForm.addEventListener('submit', handleExpenseSubmit);
+        editForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            saveExpenseChanges();
+        });
+
+        // Enhanced real-time validation
+        const inputs = expenseForm.querySelectorAll('input, select');
+        inputs.forEach(input => {
+            input.addEventListener('blur', function() {
+                validateField(this);
+            });
+            
+            input.addEventListener('input', function() {
+                clearFieldError(this);
+            });
+        });
+    }
+
+    function setupKeyboardShortcuts() {
+        document.addEventListener('keydown', function(e) {
+            // Ctrl/Cmd + N for new expense
+            if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
+                e.preventDefault();
+                document.getElementById('expense-title').focus();
+                showFlash('Use this form to add a new expense', 'info', 3000);
+            }
+            
+            // Ctrl/Cmd + F for filters
+            if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+                e.preventDefault();
+                toggleFilters();
+            }
+        });
+    }
+
+    function setupFilterHandlers() {
+        const filterInputs = document.querySelectorAll('#expenses-filters input, #expenses-filters select');
+        filterInputs.forEach(input => {
+            input.addEventListener('change', debounce(applyFilters, 300));
+        });
+    }
+
+    async function handleExpenseSubmit(e) {
+        e.preventDefault();
+        
+        const form = e.target;
+        if (!validateForm(form)) {
+            showFlash('Please fix the errors in the form', 'danger');
+            return;
+        }
+
+        setLoadingState(form, true);
+
+        const formData = new FormData(form);
+        const expenseData = {
+            title: formData.get('title'),
+            amount: parseFloat(formData.get('amount')),
+            category: formData.get('category'),
+            date: formData.get('date')
+        };
+
+        try {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                throw new Error('Please log in to add expenses');
+            }
+
+            const response = await fetch('/expenses', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(expenseData)
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(extractErrorMessage(result));
+            }
+
+            showFlash('Expense added successfully!', 'success');
+            form.reset();
+            form.classList.remove('was-validated');
+            
+            // Reset date to today
+            document.getElementById('expense-date').value = new Date().toISOString().split('T')[0];
+            
+            // Reload expenses
+            await loadExpenses();
+            
+            // Announce to screen readers
+            document.getElementById('live-region').textContent = 'New expense added successfully';
+
+        } catch (error) {
+            showFlash(error.message, 'danger');
+        } finally {
+            setLoadingState(form, false);
+        }
+    }
+
+    async function loadExpenses() {
+        const loadingElement = document.getElementById('expenses-loading');
+        const emptyElement = document.getElementById('expenses-empty');
+        const cardsContainer = document.getElementById('expenses-cards');
+        const tableContainer = document.getElementById('expenses-table-container');
+
+        // Show loading state
+        loadingElement.style.display = 'block';
+        emptyElement.style.display = 'none';
+        cardsContainer.style.display = 'none';
+        tableContainer.style.display = 'none';
+
+        try {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                throw new Error('Please log in to view expenses');
+            }
+
+            const response = await fetch('/expenses', {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to load expenses');
+            }
+
+            expenses = await response.json();
+            filteredExpenses = [...expenses];
+            
+            // Apply current filters
+            applyCurrentFilters();
+            
+            // Sort expenses
+            sortExpensesArray();
+            
+            // Render expenses
+            renderExpenses();
+
+        } catch (error) {
+            showFlash(error.message, 'danger');
+            showEmptyState();
+        } finally {
+            loadingElement.style.display = 'none';
+        }
+    }
+
+    function renderExpenses() {
+        const cardsContainer = document.getElementById('expenses-cards');
+        const tableBody = document.getElementById('expenses-table-body');
+        const emptyElement = document.getElementById('expenses-empty');
+
+        if (filteredExpenses.length === 0) {
+            showEmptyState();
+            return;
+        }
+
+        // Hide empty state
+        emptyElement.style.display = 'none';
+
+        // Show appropriate container based on screen size
+        const isDesktop = window.innerWidth >= 768;
+        document.getElementById('expenses-table-container').style.display = isDesktop ? 'block' : 'none';
+        document.getElementById('expenses-cards').style.display = isDesktop ? 'none' : 'block';
+
+        // Render cards for mobile
+        cardsContainer.innerHTML = filteredExpenses.map(expense => `
+            <div class="expense-card" role="article" aria-labelledby="expense-${expense.id}-title">
+                <div class="expense-card-header">
+                    <h3 id="expense-${expense.id}-title" class="expense-title">${escapeHtml(expense.title)}</h3>
+                    <div class="expense-amount">$${formatAmount(expense.amount)}</div>
+                </div>
+                <div class="expense-meta">
+                    <div class="expense-category">
+                        <i class="bi bi-tag" aria-hidden="true"></i>
+                        ${escapeHtml(expense.category)}
+                    </div>
+                    <div class="expense-date">
+                        <i class="bi bi-calendar3" aria-hidden="true"></i>
+                        ${formatDate(expense.date)}
+                    </div>
+                </div>
+                <div class="expense-actions">
+                    <button type="button" 
+                            class="btn btn-outline-primary btn-sm" 
+                            onclick="editExpense('${expense.id}')"
+                            aria-label="Edit ${escapeHtml(expense.title)} expense">
+                        <i class="bi bi-pencil" aria-hidden="true"></i>
+                        Edit
+                    </button>
+                    <button type="button" 
+                            class="btn btn-outline-danger btn-sm" 
+                            onclick="deleteExpense('${expense.id}')"
+                            aria-label="Delete ${escapeHtml(expense.title)} expense">
+                        <i class="bi bi-trash" aria-hidden="true"></i>
+                        Delete
+                    </button>
+                </div>
+            </div>
+        `).join('');
+
+        // Render table for desktop
+        tableBody.innerHTML = filteredExpenses.map(expense => `
+            <tr role="row">
+                <td role="cell">
+                    <strong>${escapeHtml(expense.title)}</strong>
+                </td>
+                <td role="cell">
+                    <span class="text-danger fw-bold">$${formatAmount(expense.amount)}</span>
+                </td>
+                <td role="cell">
+                    <span class="badge bg-light text-dark">
+                        ${escapeHtml(expense.category)}
+                    </span>
+                </td>
+                <td role="cell">
+                    ${formatDate(expense.date)}
+                </td>
+                <td role="cell">
+                    <div class="btn-group" role="group" aria-label="Expense actions">
+                        <button type="button" 
+                                class="btn btn-outline-primary btn-sm" 
+                                onclick="editExpense('${expense.id}')"
+                                aria-label="Edit ${escapeHtml(expense.title)} expense">
+                            <i class="bi bi-pencil" aria-hidden="true"></i>
+                        </button>
+                        <button type="button" 
+                                class="btn btn-outline-danger btn-sm" 
+                                onclick="deleteExpense('${expense.id}')"
+                                aria-label="Delete ${escapeHtml(expense.title)} expense">
+                            <i class="bi bi-trash" aria-hidden="true"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `).join('');
+
+        // Update live region
+        document.getElementById('live-region').textContent = 
+            `${filteredExpenses.length} expense${filteredExpenses.length !== 1 ? 's' : ''} displayed`;
+    }
+
+    function showEmptyState() {
+        document.getElementById('expenses-empty').style.display = 'block';
+        document.getElementById('expenses-cards').style.display = 'none';
+        document.getElementById('expenses-table-container').style.display = 'none';
+    }
+
+    function toggleFilters() {
+        const filtersElement = document.getElementById('expenses-filters');
+        const isVisible = filtersElement.style.display !== 'none';
+        
+        filtersElement.style.display = isVisible ? 'none' : 'block';
+        
+        // Update button state
+        const button = document.querySelector('[onclick="toggleFilters()"]');
+        button.setAttribute('aria-expanded', !isVisible);
+        
+        if (!isVisible) {
+            // Focus first filter input
+            filtersElement.querySelector('select, input').focus();
+        }
+    }
+
+    function applyFilters() {
+        const category = document.getElementById('filter-category').value;
+        const dateFrom = document.getElementById('filter-date-from').value;
+        const dateTo = document.getElementById('filter-date-to').value;
+
+        filteredExpenses = expenses.filter(expense => {
+            let matches = true;
+            
+            if (category && expense.category !== category) {
+                matches = false;
+            }
+            
+            if (dateFrom && new Date(expense.date) < new Date(dateFrom)) {
+                matches = false;
+            }
+            
+            if (dateTo && new Date(expense.date) > new Date(dateTo)) {
+                matches = false;
+            }
+            
+            return matches;
+        });
+
+        sortExpensesArray();
+        renderExpenses();
+        
+        showFlash(`Showing ${filteredExpenses.length} filtered expense${filteredExpenses.length !== 1 ? 's' : ''}`, 'info', 3000);
+    }
+
+    function clearFilters() {
+        document.getElementById('filter-category').value = '';
+        document.getElementById('filter-date-from').value = '';
+        document.getElementById('filter-date-to').value = '';
+        
+        filteredExpenses = [...expenses];
+        sortExpensesArray();
+        renderExpenses();
+        
+        showFlash('Filters cleared', 'info', 3000);
+    }
+
+    function applyCurrentFilters() {
+        const category = document.getElementById('filter-category').value;
+        const dateFrom = document.getElementById('filter-date-from').value;
+        const dateTo = document.getElementById('filter-date-to').value;
+        
+        if (category || dateFrom || dateTo) {
+            applyFilters();
+        }
+    }
+
+    function sortExpenses(field) {
+        if (currentSortField === field) {
+            currentSortDirection = currentSortDirection === 'asc' ? 'desc' : 'asc';
+        } else {
+            currentSortField = field;
+            currentSortDirection = 'desc';
+        }
+        
+        sortExpensesArray();
+        renderExpenses();
+        
+        // Announce sort change
+        const direction = currentSortDirection === 'asc' ? 'ascending' : 'descending';
+        document.getElementById('live-region').textContent = `Expenses sorted by ${field} in ${direction} order`;
+    }
+
+    function sortExpensesArray() {
+        filteredExpenses.sort((a, b) => {
+            let aVal = a[currentSortField];
+            let bVal = b[currentSortField];
+            
+            if (currentSortField === 'amount') {
+                aVal = parseFloat(aVal);
+                bVal = parseFloat(bVal);
+            } else if (currentSortField === 'date') {
+                aVal = new Date(aVal);
+                bVal = new Date(bVal);
+            }
+            
+            if (currentSortDirection === 'asc') {
+                return aVal > bVal ? 1 : -1;
+            } else {
+                return aVal < bVal ? 1 : -1;
+            }
+        });
+    }
+
+    function editExpense(expenseId) {
+        const expense = expenses.find(e => e.id === expenseId);
+        if (!expense) {
+            showFlash('Expense not found', 'danger');
+            return;
+        }
+
+        editingExpenseId = expenseId;
+        
+        // Populate form
+        document.getElementById('edit-expense-id').value = expense.id;
+        document.getElementById('edit-expense-title').value = expense.title;
+        document.getElementById('edit-expense-amount').value = expense.amount;
+        document.getElementById('edit-expense-category').value = expense.category;
+        document.getElementById('edit-expense-date').value = expense.date;
+        
+        // Show modal
+        const modal = new bootstrap.Modal(document.getElementById('editExpenseModal'));
+        modal.show();
+        
+        // Focus first input when modal is shown
+        document.getElementById('editExpenseModal').addEventListener('shown.bs.modal', function() {
+            document.getElementById('edit-expense-title').focus();
+        }, { once: true });
+    }
+
+    function deleteExpense(expenseId) {
+        const expense = expenses.find(e => e.id === expenseId);
+        if (!expense) {
+            showFlash('Expense not found', 'danger');
+            return;
+        }
+
+        deletingExpenseId = expenseId;
+        
+        // Populate details
+        document.getElementById('delete-expense-details').innerHTML = `
+            <strong>${escapeHtml(expense.title)}</strong><br>
+            <span class="text-muted">$${formatAmount(expense.amount)} • ${escapeHtml(expense.category)} • ${formatDate(expense.date)}</span>
+        `;
+        
+        // Setup confirm button
+        document.getElementById('confirm-delete-btn').onclick = confirmDelete;
+        
+        // Show modal
+        const modal = new bootstrap.Modal(document.getElementById('deleteExpenseModal'));
+        modal.show();
+    }
+
+    async function saveExpenseChanges() {
+        const form = document.getElementById('edit-expense-form');
+        if (!validateForm(form)) {
+            showFlash('Please fix the errors in the form', 'danger');
+            return;
+        }
+
+        const modal = bootstrap.Modal.getInstance(document.getElementById('editExpenseModal'));
+        setLoadingState(form, true);
+
+        const formData = new FormData(form);
+        const expenseData = {
+            title: formData.get('title'),
+            amount: parseFloat(formData.get('amount')),
+            category: formData.get('category'),
+            date: formData.get('date')
+        };
+
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch(`/expenses/${editingExpenseId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(expenseData)
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(extractErrorMessage(result));
+            }
+
+            showFlash('Expense updated successfully!', 'success');
+            modal.hide();
+            await loadExpenses();
+            
+            // Announce change
+            document.getElementById('live-region').textContent = 'Expense updated successfully';
+
+        } catch (error) {
+            showFlash(error.message, 'danger');
+        } finally {
+            setLoadingState(form, false);
+        }
+    }
+
+    async function confirmDelete() {
+        const button = document.getElementById('confirm-delete-btn');
+        const modal = bootstrap.Modal.getInstance(document.getElementById('deleteExpenseModal'));
+        
+        setLoadingState(button, true);
+
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch(`/expenses/${deletingExpenseId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (!response.ok) {
+                const result = await response.json();
+                throw new Error(extractErrorMessage(result));
+            }
+
+            showFlash('Expense deleted successfully!', 'success');
+            modal.hide();
+            await loadExpenses();
+            
+            // Announce change
+            document.getElementById('live-region').textContent = 'Expense deleted successfully';
+
+        } catch (error) {
+            showFlash(error.message, 'danger');
+        } finally {
+            setLoadingState(button, false);
+        }
+    }
+
+    function refreshExpenses() {
+        loadExpenses();
+        showFlash('Expenses refreshed', 'info', 3000);
+    }
+
+    // Utility functions
+    function validateForm(form) {
+        let isValid = true;
+        const inputs = form.querySelectorAll('input[required], select[required]');
+        
+        inputs.forEach(input => {
+            if (!validateField(input)) {
+                isValid = false;
+            }
+        });
+        
+        form.classList.add('was-validated');
+        return isValid;
+    }
+
+    function clearFieldError(field) {
+        field.classList.remove('is-invalid');
+        const feedback = field.parentNode.querySelector('.invalid-feedback');
+        if (feedback) {
+            feedback.style.display = 'none';
+        }
+    }
+
+    function formatAmount(amount) {
+        return parseFloat(amount).toFixed(2);
+    }
+
+    function formatDate(dateString) {
+        return new Date(dateString).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
+        });
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    function debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    }
+
+    // Handle responsive layout changes
+    window.addEventListener('resize', debounce(function() {
+        if (filteredExpenses.length > 0) {
+            renderExpenses();
+        }
+    }, 250));
+</script>
+{% endblock %}

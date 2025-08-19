@@ -1,0 +1,657 @@
+{% extends "base.html" %}
+
+{% block title %}Analytics Dashboard - Expense Tracker{% endblock %}
+
+{% block extra_head %}
+<style>
+    .analytics-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 20px;
+        color: white;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .analytics-header::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 200px;
+        height: 200px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 50%;
+        transform: translate(50%, -50%);
+    }
+    
+    .summary-card {
+        background: white;
+        border-radius: 15px;
+        padding: 1.5rem;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        border: none;
+        height: 100%;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    
+    .summary-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+    }
+    
+    .summary-icon {
+        width: 60px;
+        height: 60px;
+        border-radius: 15px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        margin-bottom: 1rem;
+    }
+    
+    .summary-number {
+        font-size: 2rem;
+        font-weight: 700;
+        margin: 0;
+        color: #333;
+    }
+    
+    .summary-label {
+        color: #6c757d;
+        font-size: 0.9rem;
+        margin: 0;
+    }
+    
+    .change-indicator {
+        font-size: 0.8rem;
+        padding: 0.2rem 0.5rem;
+        border-radius: 10px;
+        margin-top: 0.5rem;
+        display: inline-block;
+    }
+    
+    .change-positive {
+        background: rgba(40, 167, 69, 0.1);
+        color: #28a745;
+    }
+    
+    .change-negative {
+        background: rgba(220, 53, 69, 0.1);
+        color: #dc3545;
+    }
+    
+    .analytics-section {
+        background: white;
+        border-radius: 15px;
+        padding: 1.5rem;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        border: none;
+        margin-bottom: 2rem;
+    }
+    
+    .section-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        color: #333;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .budget-status-safe {
+        background: rgba(40, 167, 69, 0.1);
+        color: #28a745;
+        padding: 0.25rem 0.5rem;
+        border-radius: 8px;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+    
+    .budget-status-warning {
+        background: rgba(255, 193, 7, 0.1);
+        color: #ffc107;
+        padding: 0.25rem 0.5rem;
+        border-radius: 8px;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+    
+    .budget-status-exceeded {
+        background: rgba(220, 53, 69, 0.1);
+        color: #dc3545;
+        padding: 0.25rem 0.5rem;
+        border-radius: 8px;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+    
+    .progress-bar {
+        width: 100%;
+        height: 8px;
+        background: #e9ecef;
+        border-radius: 4px;
+        overflow: hidden;
+        margin: 0.5rem 0;
+    }
+    
+    .progress-fill {
+        height: 100%;
+        transition: width 0.3s ease;
+    }
+    
+    .progress-safe {
+        background: #28a745;
+    }
+    
+    .progress-warning {
+        background: #ffc107;
+    }
+    
+    .progress-exceeded {
+        background: #dc3545;
+    }
+    
+    .export-section {
+        background: linear-gradient(135deg, #56ab2f, #a8e6cf);
+        border-radius: 15px;
+        padding: 1.5rem;
+        color: white;
+        margin-bottom: 2rem;
+    }
+    
+    .export-btn {
+        background: rgba(255, 255, 255, 0.2);
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        border-radius: 10px;
+        padding: 0.75rem 1.5rem;
+        color: white;
+        font-weight: 600;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: all 0.3s ease;
+    }
+    
+    .export-btn:hover {
+        background: rgba(255, 255, 255, 0.3);
+        border-color: rgba(255, 255, 255, 0.5);
+        color: white;
+        text-decoration: none;
+        transform: translateY(-2px);
+    }
+    
+    .table-responsive {
+        border-radius: 10px;
+        overflow: hidden;
+    }
+    
+    .table {
+        margin: 0;
+    }
+    
+    .table th {
+        background: #f8f9fa;
+        border: none;
+        font-weight: 600;
+        color: #495057;
+    }
+    
+    .table td {
+        border-color: #f1f3f4;
+        vertical-align: middle;
+    }
+    
+    .loading-spinner {
+        text-align: center;
+        padding: 2rem;
+    }
+    
+    .error-message {
+        background: rgba(220, 53, 69, 0.1);
+        color: #dc3545;
+        padding: 1rem;
+        border-radius: 10px;
+        margin: 1rem 0;
+    }
+    
+    @media (max-width: 768px) {
+        .summary-number {
+            font-size: 1.5rem;
+        }
+        
+        .analytics-header {
+            padding: 1.5rem;
+        }
+        
+        .analytics-section {
+            padding: 1rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Analytics Header -->
+    <div class="analytics-header">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h1 class="mb-1">Analytics Dashboard</h1>
+                <p class="mb-0 opacity-75">Comprehensive insights into your spending patterns</p>
+            </div>
+            <div class="col-md-4 text-end">
+                <button id="refreshBtn" class="btn btn-outline-light" onclick="loadAnalytics()">
+                    Refresh Data
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading State -->
+    <div id="loadingState" class="loading-spinner">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="mt-2">Loading analytics data...</p>
+    </div>
+
+    <!-- Error State -->
+    <div id="errorState" class="error-message" style="display: none;">
+        <strong>Error loading analytics data.</strong>
+        <p class="mb-0">Please check your connection and try again.</p>
+    </div>
+
+    <!-- Main Analytics Content -->
+    <div id="analyticsContent" style="display: none;">
+        
+        <!-- Summary Cards -->
+        <div class="row mb-4">
+            <div class="col-md-3 mb-3">
+                <div class="summary-card">
+                    <div class="summary-icon" style="background: linear-gradient(135deg, #667eea, #764ba2); color: white;">
+                        $
+                    </div>
+                    <h3 class="summary-number" id="currentMonthSpend">$0</h3>
+                    <p class="summary-label">This Month</p>
+                    <div id="monthChangeIndicator"></div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="summary-card">
+                    <div class="summary-icon" style="background: linear-gradient(135deg, #56ab2f, #a8e6cf); color: white;">
+                        %
+                    </div>
+                    <h3 class="summary-number" id="totalExpenses">0</h3>
+                    <p class="summary-label">Total Expenses</p>
+                    <small class="text-muted" id="lastExpenseDate"></small>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="summary-card">
+                    <div class="summary-icon" style="background: linear-gradient(135deg, #f39c12, #f7dc6f); color: white;">
+                        #
+                    </div>
+                    <h3 class="summary-number" id="totalBudgets">0</h3>
+                    <p class="summary-label">Active Budgets</p>
+                    <small class="text-muted" id="budgetUsage"></small>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="summary-card">
+                    <div class="summary-icon" style="background: linear-gradient(135deg, #e74c3c, #ff6b6b); color: white;">
+                        !
+                    </div>
+                    <h3 class="summary-number" id="budgetsExceeded">0</h3>
+                    <p class="summary-label">Budget Alerts</p>
+                    <small class="text-muted">Exceeded this month</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Export Section -->
+        <div class="export-section">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h4 class="mb-1">Export Your Data</h4>
+                    <p class="mb-0 opacity-75">Download your expenses in CSV format for analysis</p>
+                </div>
+                <div class="col-md-4 text-end">
+                    <a href="#" id="exportCsvBtn" class="export-btn">
+                        Download CSV
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Analytics Sections -->
+        <div class="row">
+            <!-- Monthly Spending Trend -->
+            <div class="col-md-6">
+                <div class="analytics-section">
+                    <h5 class="section-title">
+                        Monthly Spending Trend
+                    </h5>
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Month</th>
+                                    <th>Amount</th>
+                                    <th>Expenses</th>
+                                </tr>
+                            </thead>
+                            <tbody id="monthlySpendTable">
+                                <!-- Data will be populated here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Category Breakdown -->
+            <div class="col-md-6">
+                <div class="analytics-section">
+                    <h5 class="section-title">
+                        Category Breakdown
+                    </h5>
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Category</th>
+                                    <th>Amount</th>
+                                    <th>%</th>
+                                    <th>Count</th>
+                                </tr>
+                            </thead>
+                            <tbody id="categoryBreakdownTable">
+                                <!-- Data will be populated here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Budget Utilization -->
+        <div class="analytics-section">
+            <h5 class="section-title">
+                Budget Utilization
+            </h5>
+            <div id="budgetUtilizationContainer">
+                <!-- Budget cards will be populated here -->
+            </div>
+        </div>
+
+        <!-- Top Expenses This Month -->
+        <div class="analytics-section">
+            <h5 class="section-title">
+                Top Expenses This Month
+            </h5>
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Title</th>
+                            <th>Amount</th>
+                            <th>Category</th>
+                        </tr>
+                    </thead>
+                    <tbody id="topExpensesTable">
+                        <!-- Data will be populated here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    let analyticsData = null;
+
+    async function loadAnalytics() {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            window.location.href = '/login';
+            return;
+        }
+
+        try {
+            showLoadingState();
+            
+            const response = await fetch('/analytics/dashboard', {
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+
+            if (response.ok) {
+                analyticsData = await response.json();
+                renderAnalytics(analyticsData);
+                hideLoadingState();
+            } else {
+                throw new Error('Failed to load analytics data');
+            }
+        } catch (error) {
+            console.error('Error loading analytics:', error);
+            showErrorState();
+        }
+    }
+
+    function renderAnalytics(data) {
+        renderSummaryCards(data.summary);
+        renderMonthlySpend(data.monthly_spend);
+        renderCategoryBreakdown(data.category_breakdown);
+        renderBudgetUtilization(data.budget_utilization);
+        renderTopExpenses(data.top_expenses);
+        setupExportButton();
+    }
+
+    function renderSummaryCards(summary) {
+        const currencySymbol = getCurrencySymbol(summary.base_currency);
+        
+        document.getElementById('currentMonthSpend').textContent = 
+            `${currencySymbol}${summary.current_month_spend.toFixed(2)}`;
+        
+        document.getElementById('totalExpenses').textContent = summary.total_expenses;
+        document.getElementById('totalBudgets').textContent = summary.total_budgets;
+        document.getElementById('budgetsExceeded').textContent = summary.budgets_exceeded;
+        
+        // Last expense date
+        if (summary.last_expense_date) {
+            document.getElementById('lastExpenseDate').textContent = 
+                `Last: ${new Date(summary.last_expense_date).toLocaleDateString()}`;
+        }
+        
+        // Budget usage
+        if (summary.total_budget_amount > 0) {
+            const usage = (summary.total_budget_used / summary.total_budget_amount * 100).toFixed(1);
+            document.getElementById('budgetUsage').textContent = `${usage}% used`;
+        }
+        
+        // Month-over-month change
+        const changeIndicator = document.getElementById('monthChangeIndicator');
+        if (summary.month_over_month_change !== null) {
+            const change = summary.month_over_month_change;
+            const isPositive = change > 0;
+            changeIndicator.className = `change-indicator ${isPositive ? 'change-positive' : 'change-negative'}`;
+            changeIndicator.textContent = `${isPositive ? '+' : ''}${change.toFixed(1)}% vs last month`;
+        }
+    }
+
+    function renderMonthlySpend(monthlyData) {
+        const tbody = document.getElementById('monthlySpendTable');
+        tbody.innerHTML = '';
+        
+        monthlyData.forEach(month => {
+            const currencySymbol = getCurrencySymbol(month.base_currency);
+            const row = `
+                <tr>
+                    <td><strong>${month.month_name}</strong></td>
+                    <td>${currencySymbol}${month.total_amount.toFixed(2)}</td>
+                    <td>${month.expense_count}</td>
+                </tr>
+            `;
+            tbody.innerHTML += row;
+        });
+    }
+
+    function renderCategoryBreakdown(categories) {
+        const tbody = document.getElementById('categoryBreakdownTable');
+        tbody.innerHTML = '';
+        
+        categories.forEach(category => {
+            const currencySymbol = getCurrencySymbol(analyticsData.summary.base_currency);
+            const row = `
+                <tr>
+                    <td><strong>${category.category}</strong></td>
+                    <td>${currencySymbol}${category.total_amount.toFixed(2)}</td>
+                    <td>${category.percentage.toFixed(1)}%</td>
+                    <td>${category.expense_count}</td>
+                </tr>
+            `;
+            tbody.innerHTML += row;
+        });
+    }
+
+    function renderBudgetUtilization(budgets) {
+        const container = document.getElementById('budgetUtilizationContainer');
+        
+        if (budgets.length === 0) {
+            container.innerHTML = '<p class="text-muted">No budgets set. <a href="/expenses">Create your first budget</a></p>';
+            return;
+        }
+        
+        const currencySymbol = getCurrencySymbol(analyticsData.summary.base_currency);
+        
+        container.innerHTML = budgets.map(budget => {
+            const progressWidth = Math.min(budget.utilization_percentage, 100);
+            const statusClass = `budget-status-${budget.status}`;
+            const progressClass = `progress-${budget.status}`;
+            
+            return `
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <strong>${budget.category}</strong>
+                            <span class="${statusClass}">${budget.status.toUpperCase()}</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill ${progressClass}" style="width: ${progressWidth}%"></div>
+                        </div>
+                        <small class="text-muted">${budget.days_left_in_month} days left this month</small>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="text-end">
+                            <div><strong>${currencySymbol}${budget.spent_amount.toFixed(2)}</strong> of ${currencySymbol}${budget.budget_limit.toFixed(2)}</div>
+                            <small class="text-muted">${budget.utilization_percentage.toFixed(1)}% used</small>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    function renderTopExpenses(expenses) {
+        const tbody = document.getElementById('topExpensesTable');
+        
+        if (expenses.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">No expenses this month</td></tr>';
+            return;
+        }
+        
+        tbody.innerHTML = '';
+        
+        expenses.forEach(expense => {
+            const currencySymbol = getCurrencySymbol(analyticsData.summary.base_currency);
+            const originalAmount = expense.currency !== analyticsData.summary.base_currency 
+                ? ` (${expense.amount.toFixed(2)} ${expense.currency})`
+                : '';
+            
+            const row = `
+                <tr>
+                    <td>${new Date(expense.date).toLocaleDateString()}</td>
+                    <td><strong>${expense.title}</strong></td>
+                    <td>${currencySymbol}${expense.base_amount.toFixed(2)}${originalAmount}</td>
+                    <td><span class="badge bg-secondary">${expense.category}</span></td>
+                </tr>
+            `;
+            tbody.innerHTML += row;
+        });
+    }
+
+    function setupExportButton() {
+        const exportBtn = document.getElementById('exportCsvBtn');
+        exportBtn.href = '/analytics/export/csv';
+        exportBtn.onclick = function(e) {
+            e.preventDefault();
+            downloadCSV();
+        };
+    }
+
+    async function downloadCSV() {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+
+        try {
+            const response = await fetch('/analytics/export/csv', {
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+
+            if (response.ok) {
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `expenses_export_${new Date().toISOString().split('T')[0]}.csv`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+                
+                showFlash('CSV export downloaded successfully!', 'success');
+            } else {
+                throw new Error('Export failed');
+            }
+        } catch (error) {
+            console.error('Export error:', error);
+            showFlash('Failed to export data. Please try again.', 'danger');
+        }
+    }
+
+    function getCurrencySymbol(currency) {
+        const symbols = {
+            'USD': '$', 'EUR': '€', 'GBP': '£', 'JPY': '¥', 'AUD': 'A$', 'CAD': 'C$',
+            'CHF': 'CHF', 'CNY': '¥', 'SEK': 'kr', 'NOK': 'kr', 'INR': '₹', 'KRW': '₩'
+        };
+        return symbols[currency] || currency + ' ';
+    }
+
+    function showLoadingState() {
+        document.getElementById('loadingState').style.display = 'block';
+        document.getElementById('errorState').style.display = 'none';
+        document.getElementById('analyticsContent').style.display = 'none';
+    }
+
+    function hideLoadingState() {
+        document.getElementById('loadingState').style.display = 'none';
+        document.getElementById('analyticsContent').style.display = 'block';
+    }
+
+    function showErrorState() {
+        document.getElementById('loadingState').style.display = 'none';
+        document.getElementById('errorState').style.display = 'block';
+        document.getElementById('analyticsContent').style.display = 'none';
+    }
+
+    // Initialize
+    loadAnalytics();
+</script>
+{% endblock %}

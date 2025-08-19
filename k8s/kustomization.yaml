@@ -1,0 +1,60 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: expense-tracker
+
+# Resources to include
+resources:
+- namespace.yaml
+- rbac.yaml
+- secret.yaml
+- configmap.yaml
+- pvc.yaml
+- deployment.yaml
+- service.yaml
+- ingress.yaml
+- hpa.yaml
+
+# Common labels applied to all resources
+commonLabels:
+  app: expense-tracker
+  managed-by: kustomize
+
+# Common annotations
+commonAnnotations:
+  version: v1.0.0
+  description: "Expense Tracker Kubernetes deployment"
+
+# Namespace for all resources
+namespace: expense-tracker
+
+# Image transformations
+images:
+- name: expense-tracker
+  newTag: latest  # Override with specific version tag
+
+# ConfigMap generator for environment-specific configs
+configMapGenerator:
+- name: expense-tracker-env-config
+  literals:
+  - ENV=production
+  - DEBUG=false
+  - REPLICA_COUNT=3
+
+# Secret generator for additional secrets
+secretGenerator:
+- name: expense-tracker-env-secrets
+  literals:
+  - DATABASE_URL=placeholder  # Override in environment-specific overlays
+
+# Patches for different environments
+patchesStrategicMerge:
+- patches/resource-limits.yaml
+
+# Replicas override
+replicas:
+- name: expense-tracker-app
+  count: 3
+- name: nginx-proxy
+  count: 2

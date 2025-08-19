@@ -1,0 +1,260 @@
+{% extends "base.html" %}
+
+{% block title %}Sign Up - Expense Tracker{% endblock %}
+
+{% block content %}
+<div class="login-container">
+    <!-- Background Pattern -->
+    <div class="bg-pattern"></div>
+    
+    <!-- Main Signup Card -->
+    <div class="login-card">
+        <!-- Header Section -->
+        <div class="login-header">
+            <div class="logo-section">
+                <div class="logo-wrapper">
+                    <div class="logo-icon">$</div>
+                    <div class="logo-glow"></div>
+                </div>
+                <h1 class="brand-title">Expense Tracker</h1>
+                <p class="brand-tagline">Smart Financial Management</p>
+            </div>
+            <div class="welcome-text">
+                <h2>Create Account</h2>
+                <p>Create your account to start tracking expenses!</p>
+            </div>
+        </div>
+        
+        <!-- Signup Form -->
+        <form id="signupForm" class="login-form">
+            <div class="form-group">
+                <div class="input-wrapper">
+                    <div class="input-icon">
+                        <i class="icon">@</i>
+                    </div>
+                    <input 
+                        type="text" 
+                        name="username" 
+                        class="form-input" 
+                        placeholder="Choose a username"
+                        autocomplete="username"
+                        required 
+                    />
+                    <div class="input-focus-border"></div>
+                </div>
+                <label class="input-label">Username</label>
+            </div>
+            
+            <div class="form-group">
+                <div class="input-wrapper">
+                    <div class="input-icon">
+                        <i class="icon">@</i>
+                    </div>
+                    <input 
+                        type="email" 
+                        name="email" 
+                        class="form-input" 
+                        placeholder="Enter your email"
+                        autocomplete="email"
+                        required 
+                    />
+                    <div class="input-focus-border"></div>
+                </div>
+                <label class="input-label">Email</label>
+            </div>
+            
+            <div class="form-group">
+                <div class="input-wrapper">
+                    <div class="input-icon">
+                        <i class="icon">#</i>
+                    </div>
+                    <input 
+                        type="password" 
+                        name="password" 
+                        class="form-input" 
+                        placeholder="Create a password"
+                        autocomplete="new-password"
+                        required 
+                    />
+                    <div class="input-focus-border"></div>
+                    <button type="button" class="password-toggle" onclick="togglePassword()">
+                        <i class="toggle-icon">*</i>
+                    </button>
+                </div>
+                <label class="input-label">Password</label>
+            </div>
+            
+            <div class="form-actions">
+                <button type="submit" class="btn-login" id="signupBtn">
+                    <span class="btn-content">
+                        <span class="btn-text">Sign Up</span>
+                        <span class="btn-icon">+</span>
+                    </span>
+                    <div class="btn-loading">
+                        <div class="spinner"></div>
+                        <span>Creating Account...</span>
+                    </div>
+                    <div class="btn-success">
+                        <span>Success!</span>
+                    </div>
+                </button>
+            </div>
+        </form>
+        
+        <!-- Footer -->
+        <div class="login-footer">
+            <p class="signup-prompt">
+                Already have an account? 
+                <a href="/login" class="signup-link">
+                    <span>Sign in here</span>
+                    <i class="link-arrow">&gt;</i>
+                </a>
+            </p>
+        </div>
+    </div>
+    
+    <!-- Floating Elements -->
+    <div class="floating-elements">
+        <div class="float-item float-1">$</div>
+        <div class="float-item float-2">%</div>
+        <div class="float-item float-3">$</div>
+        <div class="float-item float-4">^</div>
+    </div>
+    
+    <!-- Success Animation Overlay -->
+    <div class="success-overlay" id="successOverlay">
+        <div class="success-content">
+            <div class="success-icon">!</div>
+            <h3>Welcome!</h3>
+            <p>Redirecting to your dashboard...</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // Password toggle functionality
+    function togglePassword() {
+        const passwordInput = document.querySelector('input[name="password"]');
+        const toggleIcon = document.querySelector('.toggle-icon');
+        
+        if (passwordInput.type === 'password') {
+            passwordInput.type = 'text';
+            toggleIcon.textContent = 'H';
+        } else {
+            passwordInput.type = 'password';
+            toggleIcon.textContent = '*';
+        }
+    }
+    
+    // Form handling
+    const form = document.getElementById('signupForm');
+    const signupBtn = document.getElementById('signupBtn');
+    const btnContent = signupBtn.querySelector('.btn-content');
+    const btnLoading = signupBtn.querySelector('.btn-loading');
+    const btnSuccess = signupBtn.querySelector('.btn-success');
+    const successOverlay = document.getElementById('successOverlay');
+    
+    // Input focus effects
+    document.querySelectorAll('.form-input').forEach(input => {
+        input.addEventListener('focus', function() {
+            this.parentElement.classList.add('focused');
+        });
+        
+        input.addEventListener('blur', function() {
+            if (!this.value) {
+                this.parentElement.classList.remove('focused');
+            }
+        });
+    });
+    
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        // Client-side validation before sending to server
+        const formData = new FormData(form);
+        const data = Object.fromEntries(formData.entries());
+        
+        // Validate username
+        if (!data.username || data.username.length < 3) {
+            showFlash('Error: Username must be at least 3 characters long', 'danger');
+            return;
+        }
+        if (data.username.length > 50) {
+            showFlash('Error: Username must be at most 50 characters long', 'danger');
+            return;
+        }
+        if (!/^[a-zA-Z0-9_-]+$/.test(data.username)) {
+            showFlash('Error: Username can only contain letters, numbers, underscores, and hyphens', 'danger');
+            return;
+        }
+        
+        // Validate email
+        if (!data.email || data.email.trim().length === 0) {
+            showFlash('Error: Please enter your email address', 'danger');
+            return;
+        }
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(data.email)) {
+            showFlash('Error: Please enter a valid email address', 'danger');
+            return;
+        }
+        
+        // Validate password
+        if (!data.password || data.password.length < 6) {
+            showFlash('Error: Password must be at least 6 characters long', 'danger');
+            return;
+        }
+        
+        // Show loading state
+        signupBtn.disabled = true;
+        btnContent.style.display = 'none';
+        btnLoading.style.display = 'flex';
+        
+        try {
+            const res = await fetch('/auth/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data),
+            });
+            
+            if (res.ok) {
+                const json = await res.json();
+                localStorage.setItem('token', json.access_token);
+                
+                // Show success state
+                btnLoading.style.display = 'none';
+                btnSuccess.style.display = 'flex';
+                
+                // Show success overlay
+                successOverlay.classList.add('show');
+                
+                // Redirect after animation
+                setTimeout(() => {
+                    window.location.href = '/me';
+                }, 2000);
+                
+            } else {
+                let err;
+                try { err = await res.json(); } catch (_) {}
+                showFlash('Error: ' + extractErrorMessage(err), 'danger');
+                
+                // Reset button state
+                resetButtonState();
+            }
+        } catch (err) {
+            console.error(err);
+            showFlash('Error: Network error occurred', 'danger');
+            resetButtonState();
+        }
+    });
+    
+    function resetButtonState() {
+        signupBtn.disabled = false;
+        btnLoading.style.display = 'none';
+        btnSuccess.style.display = 'none';
+        btnContent.style.display = 'flex';
+    }
+</script>
+{% endblock %} 

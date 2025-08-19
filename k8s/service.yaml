@@ -1,0 +1,94 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: expense-tracker-service
+  namespace: expense-tracker
+  labels:
+    app: expense-tracker
+    component: backend
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-type: "nlb"  # For AWS
+spec:
+  type: ClusterIP
+  selector:
+    app: expense-tracker
+    component: backend
+  ports:
+  - port: 8000
+    targetPort: 8000
+    protocol: TCP
+    name: http
+  sessionAffinity: None
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql-service
+  namespace: expense-tracker
+  labels:
+    app: expense-tracker
+    component: database
+spec:
+  type: ClusterIP
+  selector:
+    app: expense-tracker
+    component: database
+  ports:
+  - port: 3306
+    targetPort: 3306
+    protocol: TCP
+    name: mysql
+  sessionAffinity: None
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-service
+  namespace: expense-tracker
+  labels:
+    app: expense-tracker
+    component: proxy
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-type: "nlb"  # For AWS
+    # For GCP
+    # cloud.google.com/load-balancer-type: "External"
+    # For Azure
+    # service.beta.kubernetes.io/azure-load-balancer-internal: "false"
+spec:
+  type: LoadBalancer  # Change to NodePort or ClusterIP if not using cloud provider
+  selector:
+    app: expense-tracker
+    component: proxy
+  ports:
+  - port: 80
+    targetPort: 80
+    protocol: TCP
+    name: http
+  # - port: 443
+  #   targetPort: 443
+  #   protocol: TCP
+  #   name: https
+  sessionAffinity: None
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: expense-tracker-headless
+  namespace: expense-tracker
+  labels:
+    app: expense-tracker
+    component: backend
+spec:
+  type: ClusterIP
+  clusterIP: None  # Headless service
+  selector:
+    app: expense-tracker
+    component: backend
+  ports:
+  - port: 8000
+    targetPort: 8000
+    protocol: TCP
+    name: http

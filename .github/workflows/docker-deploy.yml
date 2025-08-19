@@ -1,0 +1,366 @@
+name: Docker Build & Deploy
+
+on:
+  push:
+    tags:
+      - 'v*'  # Triggers on version tags like v1.0.0, v2.1.3, etc.
+  workflow_dispatch:  # Allow manual triggering
+    inputs:
+      tag:
+        description: 'Tag to build and deploy'
+        required: true
+        default: 'latest'
+        type: string
+      registry:
+        description: 'Container registry to use'
+        required: true
+        default: 'docker.io'
+        type: choice
+        options:
+          - 'docker.io'
+          - 'ghcr.io'
+          - 'aws'
+
+env:
+  # Default values - can be overridden by repository secrets
+  DEFAULT_IMAGE_NAME: expense-tracker
+  DEFAULT_REGISTRY: docker.io
+  
+  # Platform targets for multi-arch builds
+  PLATFORMS: linux/amd64,linux/arm64
+
+jobs:
+  prepare:
+    name: "🔧 Prepare Build Context"
+    runs-on: ubuntu-latest
+    outputs:
+      image_name: ${{ steps.config.outputs.image_name }}
+      registry: ${{ steps.config.outputs.registry }}
+      tags: ${{ steps.config.outputs.tags }}
+      version: ${{ steps.config.outputs.version }}
+      should_push: ${{ steps.config.outputs.should_push }}
+      
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Configure build parameters
+      id: config
+      run: |
+        # Determine version from tag or input
+        if [ "${{ github.event_name }}" = "push" ]; then
+          VERSION=${GITHUB_REF#refs/tags/}
+        else
+          VERSION="${{ github.event.inputs.tag }}"
+        fi
+        
+        # Determine registry
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          REGISTRY="${{ github.event.inputs.registry }}"
+        else
+          REGISTRY="${{ secrets.CONTAINER_REGISTRY || env.DEFAULT_REGISTRY }}"
+        fi
+        
+        # Determine image name with registry prefix
+        BASE_IMAGE_NAME="${{ secrets.IMAGE_NAME || env.DEFAULT_IMAGE_NAME }}"
+        
+        case $REGISTRY in
+          "docker.io")
+            if [ -n "${{ secrets.DOCKERHUB_USERNAME }}" ]; then
+              IMAGE_NAME="${{ secrets.DOCKERHUB_USERNAME }}/${BASE_IMAGE_NAME}"
+            else
+              IMAGE_NAME="${BASE_IMAGE_NAME}"
+            fi
+            ;;
+          "ghcr.io")
+            IMAGE_NAME="ghcr.io/${{ github.repository_owner }}/${BASE_IMAGE_NAME}"
+            ;;
+          "aws")
+            if [ -n "${{ secrets.AWS_ECR_REGISTRY }}" ]; then
+              IMAGE_NAME="${{ secrets.AWS_ECR_REGISTRY }}/${BASE_IMAGE_NAME}"
+            else
+              echo "❌ AWS_ECR_REGISTRY secret required for AWS deployment"
+              exit 1
+            fi
+            ;;
+          *)
+            echo "❌ Unsupported registry: $REGISTRY"
+            exit 1
+            ;;
+        esac
+        
+        # Generate tags
+        TAGS="${IMAGE_NAME}:${VERSION}"
+        if [[ $VERSION =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          # Semantic version - also tag as latest
+          TAGS="${TAGS},${IMAGE_NAME}:latest"
+          
+          # Extract major.minor for additional tag
+          MAJOR_MINOR=$(echo $VERSION | cut -d. -f1-2)
+          TAGS="${TAGS},${IMAGE_NAME}:${MAJOR_MINOR}"
+        fi
+        
+        # Determine if we should push (not for forks unless explicitly configured)
+        SHOULD_PUSH="true"
+        if [ "${{ github.repository_owner }}" != "${{ github.actor }}" ] && [ -z "${{ secrets.ALLOW_FORK_DEPLOY }}" ]; then
+          SHOULD_PUSH="false"
+          echo "⚠️ Skipping push for fork repository"
+        fi
+        
+        echo "image_name=${IMAGE_NAME}" >> $GITHUB_OUTPUT
+        echo "registry=${REGISTRY}" >> $GITHUB_OUTPUT
+        echo "tags=${TAGS}" >> $GITHUB_OUTPUT
+        echo "version=${VERSION}" >> $GITHUB_OUTPUT
+        echo "should_push=${SHOULD_PUSH}" >> $GITHUB_OUTPUT
+        
+        echo "📋 Build Configuration:"
+        echo "  Registry: ${REGISTRY}"
+        echo "  Image: ${IMAGE_NAME}"
+        echo "  Version: ${VERSION}"
+        echo "  Tags: ${TAGS}"
+        echo "  Will Push: ${SHOULD_PUSH}"
+
+  security-scan:
+    name: "🔒 Security Scan"
+    runs-on: ubuntu-latest
+    needs: prepare
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Build image for scanning
+      run: |
+        docker build -t scan-target:latest .
+        
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: 'scan-target:latest'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+        
+    - name: Upload Trivy scan results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v2
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
+        
+    - name: Run Trivy vulnerability scanner (table output)
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: 'scan-target:latest'
+        format: 'table'
+        exit-code: '1'
+        ignore-unfixed: true
+        severity: 'CRITICAL,HIGH'
+
+  build:
+    name: "🐳 Build & Push Docker Image"
+    runs-on: ubuntu-latest
+    needs: [prepare, security-scan]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+      with:
+        platforms: ${{ env.PLATFORMS }}
+        
+    - name: Login to Docker Hub
+      if: ${{ needs.prepare.outputs.registry == 'docker.io' && needs.prepare.outputs.should_push == 'true' }}
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+        
+    - name: Login to GitHub Container Registry
+      if: ${{ needs.prepare.outputs.registry == 'ghcr.io' && needs.prepare.outputs.should_push == 'true' }}
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Configure AWS credentials
+      if: ${{ needs.prepare.outputs.registry == 'aws' && needs.prepare.outputs.should_push == 'true' }}
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ secrets.AWS_REGION || 'us-east-1' }}
+        
+    - name: Login to Amazon ECR
+      if: ${{ needs.prepare.outputs.registry == 'aws' && needs.prepare.outputs.should_push == 'true' }}
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
+      
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ needs.prepare.outputs.image_name }}
+        tags: |
+          type=ref,event=tag
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+          type=semver,pattern={{major}}
+          type=raw,value=latest,enable={{is_default_branch}}
+        labels: |
+          org.opencontainers.image.title=Expense Tracker
+          org.opencontainers.image.description=FastAPI-based expense tracking application with MySQL backend
+          org.opencontainers.image.vendor=${{ github.repository_owner }}
+          org.opencontainers.image.version=${{ needs.prepare.outputs.version }}
+          org.opencontainers.image.revision=${{ github.sha }}
+          org.opencontainers.image.created={{date 'YYYY-MM-DDTHH:mm:ssZ'}}
+          
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        platforms: ${{ env.PLATFORMS }}
+        push: ${{ needs.prepare.outputs.should_push }}
+        tags: ${{ needs.prepare.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        build-args: |
+          VERSION=${{ needs.prepare.outputs.version }}
+          BUILD_DATE={{date 'YYYY-MM-DDTHH:mm:ssZ'}}
+          VCS_REF=${{ github.sha }}
+          
+    - name: Generate SBOM
+      if: ${{ needs.prepare.outputs.should_push == 'true' }}
+      uses: anchore/sbom-action@v0
+      with:
+        image: ${{ needs.prepare.outputs.image_name }}:${{ needs.prepare.outputs.version }}
+        format: spdx-json
+        output-file: sbom.spdx.json
+        
+    - name: Upload SBOM artifact
+      if: ${{ needs.prepare.outputs.should_push == 'true' }}
+      uses: actions/upload-artifact@v3
+      with:
+        name: sbom-${{ needs.prepare.outputs.version }}
+        path: sbom.spdx.json
+        retention-days: 90
+
+  test-image:
+    name: "🧪 Test Deployed Image"
+    runs-on: ubuntu-latest
+    needs: [prepare, build]
+    if: ${{ needs.prepare.outputs.should_push == 'true' }}
+    
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: test_password
+          MYSQL_DATABASE: expense_tracker_test
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+          
+    steps:
+    - name: Test container startup
+      run: |
+        # Test that the container starts successfully
+        docker run -d --name test-container \
+          --network host \
+          -e MYSQL_HOST=localhost \
+          -e MYSQL_PORT=3306 \
+          -e MYSQL_USER=root \
+          -e MYSQL_PASSWORD=test_password \
+          -e MYSQL_DATABASE=expense_tracker_test \
+          -e SECRET_KEY=test_secret_key \
+          ${{ needs.prepare.outputs.image_name }}:${{ needs.prepare.outputs.version }}
+          
+        # Wait for container to start
+        sleep 15
+        
+        # Check if container is running
+        if ! docker ps | grep test-container; then
+          echo "❌ Container failed to start"
+          docker logs test-container
+          exit 1
+        fi
+        
+        # Test health endpoint
+        if curl -f http://localhost:8000/docs; then
+          echo "✅ Application is responding"
+        else
+          echo "❌ Application health check failed"
+          docker logs test-container
+          exit 1
+        fi
+        
+        # Cleanup
+        docker stop test-container
+        docker rm test-container
+
+  deploy:
+    name: "🚀 Deploy & Notify"
+    runs-on: ubuntu-latest
+    needs: [prepare, build, test-image]
+    if: ${{ needs.prepare.outputs.should_push == 'true' }}
+    
+    steps:
+    - name: Create deployment record
+      run: |
+        echo "🎉 Deployment successful!"
+        echo "📦 Image: ${{ needs.prepare.outputs.image_name }}:${{ needs.prepare.outputs.version }}"
+        echo "🏷️  Tags: ${{ needs.prepare.outputs.tags }}"
+        echo "📅 Deployed at: $(date -u)"
+        echo "🔗 Registry: ${{ needs.prepare.outputs.registry }}"
+        
+    - name: Update deployment status
+      if: ${{ needs.prepare.outputs.registry == 'ghcr.io' }}
+      uses: actions/github-script@v7
+      with:
+        script: |
+          github.rest.repos.createDeploymentStatus({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            deployment_id: context.payload.deployment?.id || 0,
+            state: 'success',
+            log_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+            description: `Deployed ${{ needs.prepare.outputs.version }} to ${{ needs.prepare.outputs.registry }}`
+          });
+          
+    - name: Post to Slack (if configured)
+      if: ${{ secrets.SLACK_WEBHOOK_URL }}
+      run: |
+        curl -X POST -H 'Content-type: application/json' \
+          --data '{
+            "text": "🚀 Expense Tracker deployed successfully!",
+            "attachments": [
+              {
+                "color": "good",
+                "fields": [
+                  {"title": "Version", "value": "${{ needs.prepare.outputs.version }}", "short": true},
+                  {"title": "Registry", "value": "${{ needs.prepare.outputs.registry }}", "short": true},
+                  {"title": "Image", "value": "${{ needs.prepare.outputs.image_name }}", "short": false}
+                ]
+              }
+            ]
+          }' \
+          ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  cleanup:
+    name: "🧹 Cleanup"
+    runs-on: ubuntu-latest
+    needs: [prepare, build, test-image, deploy]
+    if: always()
+    
+    steps:
+    - name: Clean up temporary resources
+      run: |
+        # Remove any temporary images
+        docker image prune -f
+        
+        # Clean up build cache (keep recent)
+        docker builder prune --keep-storage 1GB -f
+        
+        echo "✅ Cleanup completed"

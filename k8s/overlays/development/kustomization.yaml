@@ -1,0 +1,40 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Base configuration
+bases:
+- ../../
+
+# Environment-specific configurations
+namePrefix: dev-
+nameSuffix: -dev
+
+# Development-specific labels
+commonLabels:
+  environment: development
+
+# Override image tag for development
+images:
+- name: expense-tracker
+  newTag: dev-latest
+
+# Reduce replicas for development
+replicas:
+- name: expense-tracker-app
+  count: 1
+- name: nginx-proxy
+  count: 1
+
+# Development-specific ConfigMap
+configMapGenerator:
+- name: expense-tracker-config
+  behavior: merge
+  literals:
+  - ENVIRONMENT=development
+  - LOG_LEVEL=debug
+  - WORKERS=1
+
+# Development resource patches
+patchesStrategicMerge:
+- deployment-dev.yaml
+- service-dev.yaml

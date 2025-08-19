@@ -1,0 +1,80 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: expense-tracker-ingress
+  namespace: expense-tracker
+  labels:
+    app: expense-tracker
+    component: ingress
+  annotations:
+    # Nginx Ingress Controller annotations
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+    nginx.ingress.kubernetes.io/rate-limit-window: "1m"
+    
+    # Certificate management (cert-manager)
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    
+    # AWS ALB Controller annotations (alternative to nginx)
+    # kubernetes.io/ingress.class: alb
+    # alb.ingress.kubernetes.io/scheme: internet-facing
+    # alb.ingress.kubernetes.io/target-type: ip
+    # alb.ingress.kubernetes.io/ssl-redirect: '443'
+    
+    # GCP GKE annotations (alternative)
+    # kubernetes.io/ingress.global-static-ip-name: "expense-tracker-ip"
+    # networking.gke.io/managed-certificates: "expense-tracker-ssl-cert"
+spec:
+  ingressClassName: nginx  # Change to 'alb' for AWS or 'gce' for GCP
+  tls:
+  - hosts:
+    - expense-tracker.yourdomain.com
+    secretName: expense-tracker-tls
+  rules:
+  - host: expense-tracker.yourdomain.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: nginx-service
+            port:
+              number: 80
+      # Direct backend access (for API clients)
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            name: expense-tracker-service
+            port:
+              number: 8000
+
+---
+# Alternative: Simple HTTP Ingress (for development)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: expense-tracker-simple
+  namespace: expense-tracker
+  labels:
+    app: expense-tracker
+    component: ingress-simple
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+spec:
+  ingressClassName: nginx
+  rules:
+  - http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: nginx-service
+            port:
+              number: 80

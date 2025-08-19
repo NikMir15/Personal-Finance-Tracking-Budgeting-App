@@ -1,0 +1,41 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Base configuration
+bases:
+- ../../
+
+# Production-specific configurations
+namePrefix: prod-
+nameSuffix: -prod
+
+# Production-specific labels
+commonLabels:
+  environment: production
+
+# Production image tag
+images:
+- name: expense-tracker
+  newTag: v1.0.0  # Use specific version in production
+
+# Production replicas
+replicas:
+- name: expense-tracker-app
+  count: 5
+- name: nginx-proxy
+  count: 3
+
+# Production-specific ConfigMap
+configMapGenerator:
+- name: expense-tracker-config
+  behavior: merge
+  literals:
+  - ENVIRONMENT=production
+  - LOG_LEVEL=info
+  - WORKERS=4
+
+# Production resource patches
+patchesStrategicMerge:
+- deployment-prod.yaml
+- service-prod.yaml
+- ingress-prod.yaml

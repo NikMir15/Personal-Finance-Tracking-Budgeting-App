@@ -1,0 +1,352 @@
+{% extends "base.html" %}
+
+{% block title %}My Expenses - Expense Tracker{% endblock %}
+
+{% block extra_head %}
+<style>
+    .add-expense-section {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 15px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        color: white;
+    }
+    
+    .add-expense-form {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 10px;
+        padding: 1.5rem;
+        backdrop-filter: blur(10px);
+    }
+    
+    .add-expense-form .form-control {
+        background: rgba(255, 255, 255, 0.9);
+        border: none;
+        border-radius: 8px;
+    }
+    
+    .add-expense-form .form-label {
+        color: white;
+        font-weight: 600;
+    }
+    
+    .btn-add-expense {
+        background: linear-gradient(135deg, #56ab2f, #a8e6cf);
+        border: none;
+        border-radius: 10px;
+        padding: 0.75rem 2rem;
+        font-weight: 600;
+        color: white;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-add-expense:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        color: white;
+    }
+    
+    .expenses-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+    
+    .toggle-form-btn {
+        background: linear-gradient(135deg, #3498db, #85c1e9);
+        border: none;
+        border-radius: 8px;
+        padding: 0.5rem 1rem;
+        color: white;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+    
+    .toggle-form-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+        color: white;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="expenses-header">
+        <h2>My Expenses</h2>
+        <button id="toggleFormBtn" class="toggle-form-btn">
+            <span id="toggleFormIcon">+</span>
+            <span id="toggleFormText">Add New Expense</span>
+        </button>
+    </div>
+
+    <!-- Add Expense Section -->
+    <div id="addExpenseSection" class="add-expense-section" style="display: none;">
+        <h4 class="mb-3">Add New Expense</h4>
+        <form id="expenseForm" class="add-expense-form">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label">Title</label>
+                    <input type="text" name="title" class="form-control" placeholder="e.g., Lunch at restaurant" required />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Amount</label>
+                    <input type="number" name="amount" step="0.01" class="form-control" placeholder="0.00" required />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Currency</label>
+                    <select name="currency" class="form-control" required>
+                        <option value="USD"> USD</option>
+                        <option value="EUR"> EUR</option>
+                        <option value="GBP"> GBP</option>
+                        <option value="JPY"> JPY</option>
+                        <option value="AUD"> AUD</option>
+                        <option value="CAD"> CAD</option>
+                        <option value="CHF"> CHF</option>
+                        <option value="CNY"> CNY</option>
+                        <option value="SEK"> SEK</option>
+                        <option value="NOK"> NOK</option>
+                        <option value="INR"> INR</option>
+                        <option value="KRW"> KRW</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Date</label>
+                    <input type="date" name="date" class="form-control" required />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Category</label>
+                    <select name="category" class="form-control" required>
+                        <option value="">Choose category...</option>
+                        <option value="Food"> Food</option>
+                        <option value="Transport"> Transport</option>
+                        <option value="Entertainment"> Entertainment</option>
+                        <option value="Shopping"> Shopping</option>
+                        <option value="Bills"> Bills</option>
+                        <option value="Healthcare"> Healthcare</option>
+                        <option value="Education"> Education</option>
+                        <option value="Other"> Other</option>
+                    </select>
+                </div>
+                <div class="col-md-6 d-flex align-items-end">
+                    <button type="submit" class="btn-add-expense w-100">
+                        Add Expense
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Main Content Card -->
+    <div class="card shadow expenses-card">
+        <div class="card-body">
+
+        <!-- Budget Section -->
+        <h5 class="mt-4">Budgets</h5>
+        <form id="budgetForm" class="row g-3 mb-3">
+            <div class="col-md-6">
+                <label class="form-label">Category</label>
+                <input type="text" name="category" class="form-control" required />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Limit</label>
+                <input type="number" name="limit" step="0.01" class="form-control" required />
+            </div>
+            <div class="col-md-2 d-grid align-items-end">
+                <button type="submit" class="btn btn-primary">Set/Update</button>
+            </div>
+        </form>
+        <table class="table table-sm" id="budgetsTable">
+            <thead><tr><th>Category</th><th>Limit</th></tr></thead>
+            <tbody></tbody>
+        </table>
+
+        <hr class="my-4" />
+
+        <!-- Expenses Table -->
+        <div class="table-responsive">
+            <table class="table table-striped" id="expensesTable">
+                <thead>
+                    <tr>
+                        <th>Title</th>
+                        <th>Amount</th>
+                        <th>Currency</th>
+                        <th>Base Amount</th>
+                        <th>Date</th>
+                        <th>Category</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    const token = localStorage.getItem('token');
+    if (!token) {
+        window.location.href = '/login';
+    }
+
+    const tableBody = document.querySelector('#expensesTable tbody');
+
+    async function loadExpenses() {
+        try {
+            const res = await fetch('/expenses/', {
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            if (res.ok) {
+                const response = await res.json();
+                const data = response.items || response; // Handle both new and old API format
+                tableBody.innerHTML = data.map(exp => {
+                    const baseAmountDisplay = exp.base_amount && exp.base_currency && exp.currency !== exp.base_currency 
+                        ? `${exp.base_amount.toFixed(2)} ${exp.base_currency}`
+                        : '-';
+                    
+                    return `
+                        <tr>
+                            <td>${exp.title}</td>
+                            <td>${exp.amount.toFixed(2)}</td>
+                            <td><strong>${exp.currency}</strong></td>
+                            <td class="text-muted">${baseAmountDisplay}</td>
+                            <td>${exp.date}</td>
+                            <td>${exp.category}</td>
+                            <td><button class="btn btn-sm btn-outline-danger delete-btn" data-id="${exp.id}">Delete</button></td>
+                        </tr>
+                    `;
+                }).join('');
+                // attach delete handlers
+                document.querySelectorAll('.delete-btn').forEach(btn => {
+                    btn.addEventListener('click', async () => {
+                        const id = btn.dataset.id;
+                        if (!confirm('Delete this expense?')) return;
+                        const delRes = await fetch(`/expenses/${id}`, {
+                            method: 'DELETE',
+                            headers: { 'Authorization': 'Bearer ' + token }
+                        });
+                        if (delRes.status === 204) {
+                            await loadExpenses();
+                            showFlash('Expense deleted successfully', 'success');
+                            // Notify other pages that expenses were updated
+                            const timestamp = Date.now().toString();
+                            console.log('Setting expenses_updated flag:', timestamp);
+                            localStorage.setItem('expenses_updated', timestamp);
+                        } else {
+                            try {
+                                const err = await delRes.json();
+                                console.error('Delete error:', err);
+                                const errorMsg = err.detail?.message || err.detail || err.message || 'Error deleting expense';
+                                showFlash(`Error: ${errorMsg}`, 'danger');
+                            } catch (parseErr) {
+                                console.error('Error parsing delete response:', parseErr);
+                                showFlash(`Delete failed with status: ${delRes.status}`, 'danger');
+                            }
+                        }
+                    });
+                });
+            } else {
+                showFlash('Failed to load expenses', 'danger');
+            }
+        } catch (err) {
+            console.error(err);
+            showFlash('Network error', 'danger');
+        }
+    }
+
+    document.getElementById('expenseForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const formData = Object.fromEntries(new FormData(e.target).entries());
+        try {
+            const res = await fetch('/expenses/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + token
+                },
+                body: JSON.stringify(formData)
+            });
+            if (res.ok) {
+                e.target.reset();
+                await loadExpenses();
+                const resp = await res.json();
+                // Notify other pages that expenses were updated
+                const timestamp = Date.now().toString();
+                console.log('Setting expenses_updated flag (add):', timestamp);
+                localStorage.setItem('expenses_updated', timestamp);
+                if (resp.budget_exceeded) {
+                    showFlash(`Budget exceeded! Spent ${resp.total_spent.toFixed(2)} / ${resp.budget_limit.toFixed(2)}`, 'warning');
+                } else {
+                    showFlash('Expense added successfully', 'success');
+                }
+            } else {
+                const err = await res.json();
+                console.error('Error response:', err);
+                const errorMsg = err.detail?.message || err.detail || err.message || 'Error adding expense';
+                showFlash(`Error: ${errorMsg}`, 'danger');
+            }
+        } catch (err) {
+            console.error(err);
+            showFlash('Network error', 'danger');
+        }
+    });
+
+    async function loadBudgets() {
+        const res = await fetch('/budgets/', {
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+        if (res.ok) {
+            const data = await res.json();
+            const tbody = document.querySelector('#budgetsTable tbody');
+            tbody.innerHTML = data.map(b => `<tr><td>${b.category}</td><td>${b.limit.toFixed(2)}</td></tr>`).join('');
+        }
+    }
+
+    document.getElementById('budgetForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const formData = Object.fromEntries(new FormData(e.target).entries());
+        formData.limit = parseFloat(formData.limit);
+        const res = await fetch('/budgets/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + token
+            },
+            body: JSON.stringify(formData)
+        });
+        if (res.ok) {
+            await loadBudgets();
+            showFlash('Budget saved successfully', 'success');
+            e.target.reset();
+            // Notify other pages that budgets were updated
+            localStorage.setItem('budgets_updated', Date.now().toString());
+        } else {
+            showFlash('Error saving budget', 'danger');
+        }
+    });
+
+    // Toggle form visibility
+    document.getElementById('toggleFormBtn').addEventListener('click', function() {
+        const section = document.getElementById('addExpenseSection');
+        const icon = document.getElementById('toggleFormIcon');
+        const text = document.getElementById('toggleFormText');
+        
+        if (section.style.display === 'none') {
+            section.style.display = 'block';
+            icon.textContent = '-';
+            text.textContent = 'Hide Form';
+        } else {
+            section.style.display = 'none';
+            icon.textContent = '+';
+            text.textContent = 'Add New Expense';
+        }
+    });
+
+    loadExpenses();
+    loadBudgets();
+</script>
+{% endblock %} 

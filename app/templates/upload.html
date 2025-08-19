@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}Upload Image - Expense Tracker{% endblock %}
+
+{% block content %}
+<div class="card shadow upload-card">
+    <div class="card-body">
+        <h3 class="card-title text-center mb-4">Test Image Upload</h3>
+        <div id="login-required" class="alert alert-warning d-none">Please login to upload image</div>
+        <form id="uploadForm">
+            <div class="mb-3">
+                <label class="form-label">Choose an image (JPG/PNG)</label>
+                <input type="file" name="file" class="form-control" accept="image/png, image/jpeg" required />
+            </div>
+            <div class="d-grid">
+                <button type="submit" class="btn btn-primary">Upload</button>
+            </div>
+        </form>
+        <div id="status" class="mt-3"></div>
+        <img id="preview" class="img-fluid border" />
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    const token = localStorage.getItem('token');
+    const form = document.getElementById('uploadForm');
+    const statusEl = document.getElementById('status');
+    const previewImg = document.getElementById('preview');
+    const loginRequired = document.getElementById('login-required');
+
+    // Guard: block UI if not logged in
+    if (!token) {
+        if (loginRequired) loginRequired.classList.remove('d-none');
+        if (form) form.classList.add('disabled');
+        showFlash('Please login to upload image', 'warning');
+    }
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (!localStorage.getItem('token')) {
+            showFlash('Please login to upload image', 'warning');
+            return;
+        }
+        statusEl.textContent = 'Uploading...';
+        statusEl.className = '';
+
+        const formData = new FormData(form);
+        try {
+            const res = await fetch('/upload/image', {
+                method: 'POST',
+                headers: token ? { 'Authorization': 'Bearer ' + token } : undefined,
+                body: formData,
+            });
+            const json = await res.json();
+            if (res.ok) {
+                showFlash('Uploaded as ' + json.filename, 'success');
+                // Show preview
+                const reader = new FileReader();
+                reader.onload = ev => {
+                    previewImg.src = ev.target.result;
+                    previewImg.style.display = 'block';
+                };
+                reader.readAsDataURL(form.elements['file'].files[0]);
+            } else {
+                showFlash('Error: ' + (json.detail || 'Upload failed'), 'danger');
+                previewImg.style.display = 'none';
+            }
+        } catch (err) {
+            console.error(err);
+            showFlash('Error: Network error', 'danger');
+        }
+    });
+</script>
+{% endblock %} 

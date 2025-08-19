@@ -1,0 +1,821 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Expense Tracker{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+    .dashboard-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 20px;
+        color: white;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .dashboard-header::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 200px;
+        height: 200px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 50%;
+        transform: translate(50%, -50%);
+    }
+    
+    .stats-card {
+        background: white;
+        border-radius: 15px;
+        padding: 1.5rem;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        border: none;
+        height: 100%;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    
+    .stats-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+    }
+    
+    .stats-icon {
+        width: 60px;
+        height: 60px;
+        border-radius: 15px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        margin-bottom: 1rem;
+    }
+    
+    .stats-number {
+        font-size: 2rem;
+        font-weight: 700;
+        margin: 0;
+        color: #333;
+    }
+    
+    .stats-label {
+        color: #6c757d;
+        font-size: 0.9rem;
+        margin: 0;
+    }
+    
+    .chart-card {
+        background: white;
+        border-radius: 15px;
+        padding: 1.5rem;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        border: none;
+        margin-bottom: 2rem;
+    }
+    
+    .quick-actions {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-top: 2rem;
+    }
+    
+    .action-btn {
+        padding: 1rem 1.5rem;
+        border-radius: 12px;
+        border: none;
+        font-weight: 600;
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        transition: all 0.3s ease;
+        color: white;
+    }
+    
+    .action-btn-primary {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+    }
+    
+    .action-btn-success {
+        background: linear-gradient(135deg, #56ab2f, #a8e6cf);
+    }
+    
+    .action-btn-info {
+        background: linear-gradient(135deg, #3498db, #85c1e9);
+    }
+    
+    .action-btn-warning {
+        background: linear-gradient(135deg, #f39c12, #f7dc6f);
+    }
+    
+    .action-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        color: white;
+        text-decoration: none;
+    }
+    
+    .profile-avatar {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.2);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2rem;
+        margin: 0 auto 1rem;
+    }
+    
+    .recent-activity {
+        max-height: 300px;
+        overflow-y: auto;
+    }
+    
+    .activity-item {
+        padding: 0.75rem;
+        border-left: 3px solid #667eea;
+        background: #f8f9fa;
+        margin-bottom: 0.5rem;
+        border-radius: 0 8px 8px 0;
+    }
+    
+    .spending-chart-container {
+        height: 180px;
+        position: relative;
+    }
+    
+    #spendingChart {
+        max-height: 180px !important;
+    }
+    
+    .category-list {
+        max-height: 160px;
+        overflow-y: auto;
+    }
+    
+    .category-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid #f0f0f0;
+    }
+    
+    .category-item:last-child {
+        border-bottom: none;
+    }
+    
+    .category-name {
+        font-weight: 500;
+        color: #333;
+    }
+    
+    .category-amount {
+        font-weight: 600;
+        color: #667eea;
+    }
+    
+    .pie-chart-container {
+        height: 200px;
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    #expensePieChart {
+        max-height: 200px !important;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Dashboard Header -->
+    <div class="dashboard-header">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <div class="profile-avatar">
+                    <span id="userInitials">U</span>
+                </div>
+                <h1 class="mb-1" id="welcomeMessage">Welcome back!</h1>
+                <p class="mb-0 opacity-75" id="userEmail">Loading...</p>
+            </div>
+            <div class="col-md-4 text-end">
+                <button id="refreshBtn" class="btn btn-outline-light" onclick="manualRefresh()">
+                    Refresh
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3 mb-3">
+            <div class="stats-card">
+                <div class="stats-icon" style="background: linear-gradient(135deg, #667eea, #764ba2); color: white;">
+                    $
+                </div>
+                <h3 class="stats-number" id="totalSpent">$0</h3>
+                <p class="stats-label">Total Spent This Month</p>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="stats-card">
+                <div class="stats-icon" style="background: linear-gradient(135deg, #56ab2f, #a8e6cf); color: white;">
+                    %
+                </div>
+                <h3 class="stats-number" id="totalExpenses">0</h3>
+                <p class="stats-label">Total Expenses</p>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="stats-card">
+                <div class="stats-icon" style="background: linear-gradient(135deg, #f39c12, #f7dc6f); color: white;">
+                    #
+                </div>
+                <h3 class="stats-number" id="totalBudgets">0</h3>
+                <p class="stats-label">Active Budgets</p>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="stats-card">
+                <div class="stats-icon" style="background: linear-gradient(135deg, #e74c3c, #ff6b6b); color: white;">
+                    !
+                </div>
+                <h3 class="stats-number" id="budgetAlerts">0</h3>
+                <p class="stats-label">Budget Alerts</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <div class="chart-card">
+                <h5 class="mb-3">
+                    <span class="me-2">^</span>
+                    Spending Overview
+                </h5>
+                <div class="spending-chart-container">
+                    <canvas id="spendingChart"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="chart-card">
+                <h5 class="mb-3">
+                    <span class="me-2">%</span>
+                    Category Summary
+                </h5>
+                <div id="categoryList" class="category-list">
+                    <p class="text-muted mb-0">Add expenses to see category breakdown</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Row - Recent Activity and Quick Actions -->
+    <div class="row">
+        <div class="col-md-6">
+            <div class="chart-card">
+                <h5 class="mb-3">
+                    <span class="me-2">*</span>
+                    Recent Activity
+                </h5>
+                <div class="recent-activity" id="recentActivity">
+                    <div class="activity-item">
+                        <strong>Welcome!</strong><br>
+                        <small class="text-muted">Start by adding your first expense or setting a budget.</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="chart-card">
+                <h5 class="mb-3">
+                    <span class="me-2">O</span>
+                    Expense Categories
+                </h5>
+                <div class="pie-chart-container">
+                    <canvas id="expensePieChart" width="300" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    let spendingChart, categoryChart;
+
+    async function fetchProfile() {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            window.location.href = '/login';
+            return;
+        }
+        try {
+            const res = await fetch('/auth/me', {
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            
+            if (res.ok) {
+                const user = await res.json();
+                
+                // Update header
+                document.getElementById('welcomeMessage').textContent = `Welcome back, ${user.username}!`;
+                document.getElementById('userEmail').textContent = user.email || 'No email provided';
+                
+                // Set user initials
+                const initials = user.username.substring(0, 2).toUpperCase();
+                document.getElementById('userInitials').textContent = initials;
+                
+                // Fetch dashboard data
+                await fetchDashboardData(token);
+                
+            } else {
+                localStorage.removeItem('token');
+                window.location.href = '/login';
+            }
+        } catch (err) {
+            console.error('Profile fetch error:', err);
+            showFlash('Error loading profile. Please try refreshing the page.', 'danger');
+            // Initialize with empty/real data instead of demo
+            updateStats([], []);
+            createCharts([], []);
+            updateRecentActivity([]);
+        }
+    }
+
+    async function fetchDashboardData(token) {
+        try {
+            console.log('Fetching dashboard data...');
+            
+            // Fetch expenses and budgets
+            const [expensesRes, budgetsRes] = await Promise.all([
+                fetch('/expenses/', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                }),
+                fetch('/budgets/', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                })
+            ]);
+
+            let expenses = [], budgets = [];
+            
+            if (expensesRes.ok) {
+                const expensesData = await expensesRes.json();
+                // Handle different response formats
+                if (Array.isArray(expensesData)) {
+                    expenses = expensesData;
+                } else if (expensesData.items && Array.isArray(expensesData.items)) {
+                    expenses = expensesData.items;
+                } else {
+                    expenses = [];
+                }
+                console.log('Fetched expenses:', expenses.length, 'items', expenses);
+            } else {
+                console.error('Expenses API failed:', expensesRes.status, expensesRes.statusText);
+                const errorText = await expensesRes.text();
+                console.error('Error response:', errorText);
+            }
+            
+            if (budgetsRes.ok) {
+                const budgetsData = await budgetsRes.json();
+                // Handle different response formats
+                if (Array.isArray(budgetsData)) {
+                    budgets = budgetsData;
+                } else if (budgetsData.items && Array.isArray(budgetsData.items)) {
+                    budgets = budgetsData.items;
+                } else {
+                    budgets = [];
+                }
+                console.log('Fetched budgets:', budgets.length, 'items', budgets);
+            } else {
+                console.error('Budgets API failed:', budgetsRes.status, budgetsRes.statusText);
+                const errorText = await budgetsRes.text();
+                console.error('Error response:', errorText);
+            }
+
+            // Always update with real data (even if empty)
+            updateStats(expenses, budgets);
+            createCharts(expenses, budgets);
+            updateRecentActivity(expenses);
+            
+            console.log('Dashboard updated with real data');
+            
+        } catch (err) {
+            console.error('Error fetching dashboard data:', err);
+            console.error('Full error details:', err.message, err.stack);
+            showFlash('API Error: Unable to load latest data. Showing empty data.', 'warning');
+            // Show empty/real data instead of demo
+            updateStats([], []);
+            createCharts([], []);
+            updateRecentActivity([]);
+        }
+    }
+
+    function updateStats(expenses, budgets) {
+        // Calculate current month spending using base currency
+        const currentMonth = new Date().getMonth();
+        const currentYear = new Date().getFullYear();
+        
+        // Get user's base currency from first expense or default to USD
+        const baseCurrency = expenses.length > 0 && expenses[0].base_currency ? expenses[0].base_currency : 'USD';
+        
+        const monthlySpent = expenses
+            .filter(exp => {
+                const expDate = new Date(exp.date);
+                return expDate.getMonth() === currentMonth && expDate.getFullYear() === currentYear;
+            })
+            .reduce((sum, exp) => {
+                // Use base_amount if available, otherwise use original amount
+                const amount = exp.base_amount !== null && exp.base_amount !== undefined ? exp.base_amount : exp.amount;
+                return sum + amount;
+            }, 0);
+
+        // Update stats with base currency symbol
+        const currencySymbol = getCurrencySymbol(baseCurrency);
+        document.getElementById('totalSpent').textContent = `${currencySymbol}${monthlySpent.toFixed(2)}`;
+        document.getElementById('totalExpenses').textContent = expenses.length;
+        document.getElementById('totalBudgets').textContent = budgets.length;
+        
+        // Calculate budget alerts using base currency amounts
+        const alerts = budgets.filter(budget => {
+            const categorySpent = expenses
+                .filter(exp => exp.category === budget.category)
+                .reduce((sum, exp) => {
+                    const amount = exp.base_amount !== null && exp.base_amount !== undefined ? exp.base_amount : exp.amount;
+                    return sum + amount;
+                }, 0);
+            return categorySpent > budget.limit;
+        }).length;
+        
+        document.getElementById('budgetAlerts').textContent = alerts;
+    }
+    
+    function getCurrencySymbol(currency) {
+        const symbols = {
+            'USD': '$', 'EUR': '€', 'GBP': '£', 'JPY': '¥', 'AUD': 'A$', 'CAD': 'C$',
+            'CHF': 'CHF', 'CNY': '¥', 'SEK': 'kr', 'NOK': 'kr', 'INR': '₹', 'KRW': '₩'
+        };
+        return symbols[currency] || currency + ' ';
+    }
+
+    function createCharts(expenses, budgets) {
+        // Spending Overview Chart
+        const ctx1 = document.getElementById('spendingChart').getContext('2d');
+        const last7Days = [];
+        const spendingData = [];
+        
+        for (let i = 6; i >= 0; i--) {
+            const date = new Date();
+            date.setDate(date.getDate() - i);
+            last7Days.push(date.toLocaleDateString('en-US', { weekday: 'short' }));
+            
+            const daySpent = expenses
+                .filter(exp => new Date(exp.date).toDateString() === date.toDateString())
+                .reduce((sum, exp) => {
+                    const amount = exp.base_amount !== null && exp.base_amount !== undefined ? exp.base_amount : exp.amount;
+                    return sum + amount;
+                }, 0);
+            spendingData.push(daySpent);
+        }
+
+        if (spendingChart && typeof spendingChart.destroy === 'function') {
+            spendingChart.destroy();
+        }
+        spendingChart = new Chart(ctx1, {
+            type: 'line',
+            data: {
+                labels: last7Days,
+                datasets: [{
+                    label: 'Daily Spending',
+                    data: spendingData,
+                    borderColor: '#667eea',
+                    backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                const baseCurrency = expenses.length > 0 && expenses[0].base_currency ? expenses[0].base_currency : 'USD';
+                                const currencySymbol = getCurrencySymbol(baseCurrency);
+                                return currencySymbol + value;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // Category List - use base currency amounts
+        const categorySpending = {};
+        expenses.forEach(exp => {
+            const amount = exp.base_amount !== null && exp.base_amount !== undefined ? exp.base_amount : exp.amount;
+            categorySpending[exp.category] = (categorySpending[exp.category] || 0) + amount;
+        });
+
+        const categoryListEl = document.getElementById('categoryList');
+        
+        if (Object.keys(categorySpending).length > 0) {
+            const baseCurrency = expenses.length > 0 && expenses[0].base_currency ? expenses[0].base_currency : 'USD';
+            const currencySymbol = getCurrencySymbol(baseCurrency);
+            
+            const categoryItems = Object.entries(categorySpending)
+                .sort(([,a], [,b]) => b - a) // Sort by amount descending
+                .map(([category, amount]) => `
+                    <div class="category-item">
+                        <span class="category-name">${category}</span>
+                        <span class="category-amount">${currencySymbol}${amount.toFixed(2)}</span>
+                    </div>
+                `).join('');
+            
+            categoryListEl.innerHTML = categoryItems;
+        } else {
+            categoryListEl.innerHTML = '<p class="text-muted mb-0">Add expenses to see category breakdown</p>';
+        }
+
+        // Expense Pie Chart
+        const ctx2 = document.getElementById('expensePieChart').getContext('2d');
+        
+        if (window.expensePieChart && typeof window.expensePieChart.destroy === 'function') {
+            window.expensePieChart.destroy();
+        }
+        
+        if (Object.keys(categorySpending).length > 0) {
+            window.expensePieChart = new Chart(ctx2, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(categorySpending),
+                    datasets: [{
+                        data: Object.values(categorySpending),
+                        backgroundColor: [
+                            '#667eea',
+                            '#56ab2f',
+                            '#f39c12',
+                            '#e74c3c',
+                            '#3498db',
+                            '#9b59b6',
+                            '#ff6b6b',
+                            '#4ecdc4'
+                        ],
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                padding: 10,
+                                usePointStyle: true
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.raw || 0;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = ((value / total) * 100).toFixed(1);
+                                    const baseCurrency = expenses.length > 0 && expenses[0].base_currency ? expenses[0].base_currency : 'USD';
+                                    const currencySymbol = getCurrencySymbol(baseCurrency);
+                                    return `${label}: ${currencySymbol}${value.toFixed(2)} (${percentage}%)`;
+                                }
+                            }
+                        }
+                    },
+                    cutout: '60%'
+                }
+            });
+        } else {
+            // Show empty state
+            ctx2.fillStyle = '#f8f9fa';
+            ctx2.fillRect(0, 0, ctx2.canvas.width, ctx2.canvas.height);
+            ctx2.fillStyle = '#6c757d';
+            ctx2.font = '14px sans-serif';
+            ctx2.textAlign = 'center';
+            ctx2.fillText('No expenses yet', ctx2.canvas.width/2, ctx2.canvas.height/2);
+        }
+    }
+
+    function updateRecentActivity(expenses) {
+        const recentExpenses = expenses
+            .sort((a, b) => new Date(b.date) - new Date(a.date))
+            .slice(0, 5);
+
+        const activityHtml = recentExpenses.length > 0 
+            ? recentExpenses.map(exp => {
+                const baseCurrency = exp.base_currency || 'USD';
+                const currencySymbol = getCurrencySymbol(baseCurrency);
+                const displayAmount = exp.base_amount !== null && exp.base_amount !== undefined ? exp.base_amount : exp.amount;
+                const currencyInfo = exp.currency !== baseCurrency ? ` (${exp.amount.toFixed(2)} ${exp.currency})` : '';
+                
+                return `
+                    <div class="activity-item">
+                        <strong>${currencySymbol}${displayAmount.toFixed(2)}${currencyInfo} - ${exp.title}</strong><br>
+                        <small class="text-muted">${exp.category} • ${new Date(exp.date).toLocaleDateString()}</small>
+                    </div>
+                `;
+            }).join('')
+            : `<div class="activity-item">
+                <strong>No recent activity</strong><br>
+                <small class="text-muted">Start by adding your first expense!</small>
+            </div>`;
+
+        document.getElementById('recentActivity').innerHTML = activityHtml;
+    }
+
+    // Removed demo data function - now always showing real data
+
+    // Logout functionality available through main navigation
+
+    // Manual refresh function
+    function manualRefresh() {
+        const refreshBtn = document.getElementById('refreshBtn');
+        refreshBtn.disabled = true;
+        refreshBtn.innerHTML = 'Refreshing...';
+        
+        console.log('=== MANUAL REFRESH STARTED ===');
+        console.log('Token exists:', !!localStorage.getItem('token'));
+        
+        fetchProfile().finally(() => {
+            refreshBtn.disabled = false;
+            refreshBtn.innerHTML = 'Refresh';
+            console.log('=== MANUAL REFRESH COMPLETED ===');
+        });
+    }
+    
+    // Debug function to check API endpoints
+    async function debugAPI() {
+        const token = localStorage.getItem('token');
+        console.log('=== API DEBUG ===');
+        console.log('Token:', token ? 'Present' : 'Missing');
+        
+        if (!token) {
+            console.log('No token - user not logged in');
+            return;
+        }
+        
+        try {
+            // Test profile endpoint
+            const profileRes = await fetch('/auth/me', {
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            console.log('Profile API:', profileRes.status, profileRes.statusText);
+            
+            // Test expenses endpoint  
+            const expensesRes = await fetch('/expenses/', {
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            console.log('Expenses API:', expensesRes.status, expensesRes.statusText);
+            if (expensesRes.ok) {
+                const expData = await expensesRes.json();
+                console.log('Expenses data:', expData);
+            }
+            
+            // Test budgets endpoint
+            const budgetsRes = await fetch('/budgets/', {
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            console.log('Budgets API:', budgetsRes.status, budgetsRes.statusText);
+            if (budgetsRes.ok) {
+                const budData = await budgetsRes.json();
+                console.log('Budgets data:', budData);
+            }
+            
+        } catch (err) {
+            console.error('API Debug error:', err);
+        }
+    }
+
+    // Force immediate data refresh - no demo data
+    async function forceRealData() {
+        console.log('=== FORCING REAL DATA LOAD ===');
+        const token = localStorage.getItem('token');
+        if (!token) {
+            console.log('No token found, redirecting to login');
+            window.location.href = '/login';
+            return;
+        }
+        
+        try {
+            // Clear any cached data first
+            console.log('Clearing any cached data...');
+            
+            // Force fetch user profile
+            const userRes = await fetch('/auth/me', {
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            
+            if (!userRes.ok) {
+                console.error('Profile fetch failed:', userRes.status);
+                localStorage.removeItem('token');
+                window.location.href = '/login';
+                return;
+            }
+            
+            const user = await userRes.json();
+            console.log('User profile loaded:', user);
+            
+            // Update header
+            document.getElementById('welcomeMessage').textContent = `Welcome back, ${user.username}!`;
+            document.getElementById('userEmail').textContent = user.email || 'No email provided';
+            document.getElementById('userInitials').textContent = user.username.substring(0, 2).toUpperCase();
+            
+            // Force fetch dashboard data
+            await fetchDashboardData(token);
+            console.log('Real data loaded successfully');
+            
+        } catch (err) {
+            console.error('Failed to load real data:', err);
+            // Even on error, show empty real data instead of demo
+            updateStats([], []);
+            createCharts([], []);
+            updateRecentActivity([]);
+        }
+    }
+
+    // Initialize dashboard with real data only
+    forceRealData();
+    
+    // Auto-refresh when page becomes visible (user returns from other tabs/pages)
+    document.addEventListener('visibilitychange', function() {
+        if (!document.hidden) {
+            console.log('Page visible again, refreshing dashboard...');
+            try {
+                fetchProfile();
+            } catch (err) {
+                console.error('Error during visibility refresh:', err);
+            }
+        }
+    });
+    
+    // Listen for storage events (when other pages update data)
+    window.addEventListener('storage', function(e) {
+        console.log('Storage event detected:', e.key, e.newValue);
+        if (e.key === 'expenses_updated' || e.key === 'budgets_updated') {
+            console.log('Data updated in another tab, refreshing dashboard...');
+            try {
+                // Add a small delay to ensure the API has processed the changes
+                setTimeout(() => {
+                    fetchProfile();
+                }, 500);
+                // Clear the update flag
+                localStorage.removeItem(e.key);
+            } catch (err) {
+                console.error('Error during storage refresh:', err);
+            }
+        }
+    });
+    
+    // Also listen for focus events as a backup
+    window.addEventListener('focus', function() {
+        console.log('Window focused, checking for updates...');
+        const expensesUpdated = localStorage.getItem('expenses_updated');
+        const budgetsUpdated = localStorage.getItem('budgets_updated');
+        
+        if (expensesUpdated || budgetsUpdated) {
+            console.log('Updates detected, refreshing...');
+            fetchProfile();
+            localStorage.removeItem('expenses_updated');
+            localStorage.removeItem('budgets_updated');
+        }
+    });
+    
+    // Periodic refresh every 60 seconds (when page is visible) - increased interval to reduce load
+    setInterval(function() {
+        if (!document.hidden && document.getElementById('welcomeMessage')) {
+            console.log('Periodic refresh...');
+            try {
+                fetchProfile();
+            } catch (err) {
+                console.error('Error during periodic refresh:', err);
+            }
+        }
+    }, 60000);
+</script>
+{% endblock %} 

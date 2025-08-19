@@ -1,0 +1,44 @@
+{
+  "timestamp": "2025-08-17T20:34:25.037155",
+  "base_url": "http://localhost:8000",
+  "summary": {
+    "total_requests": 950,
+    "average_rps": 980.6921001902881,
+    "average_p95_ms": 7858.851194381714,
+    "slo_compliance_rate": 0.0
+  },
+  "results": [
+    {
+      "endpoint": "/healthz",
+      "method": "GET",
+      "requests_per_second": 1848.8268250001101,
+      "p95_response_time": 46.588897705078125,
+      "error_rate": 100.0,
+      "total_requests": 100
+    },
+    {
+      "endpoint": "/healthz",
+      "method": "GET",
+      "requests_per_second": 1873.5863131798183,
+      "p95_response_time": 226.90844535827637,
+      "error_rate": 100.0,
+      "total_requests": 500
+    },
+    {
+      "endpoint": "/expenses/",
+      "method": "GET",
+      "requests_per_second": 192.20203855034993,
+      "p95_response_time": 504.72426414489746,
+      "error_rate": 0.0,
+      "total_requests": 100
+    },
+    {
+      "endpoint": "/expenses/",
+      "method": "GET",
+      "requests_per_second": 8.153224030873917,
+      "p95_response_time": 30657.183170318604,
+      "error_rate": 99.6,
+      "total_requests": 250
+    }
+  ]
+}

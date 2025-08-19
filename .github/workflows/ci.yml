@@ -1,0 +1,387 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop, feature/* ]
+  pull_request:
+    branches: [ main, develop ]
+
+env:
+  PYTHON_VERSION: '3.11'
+  
+jobs:
+  lint:
+    name: "🔍 Code Linting"
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-lint-${{ hashFiles('requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-lint-
+          ${{ runner.os }}-pip-
+          
+    - name: Install linting dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install flake8 ruff black isort
+        
+    - name: Run ruff (fast Python linter)
+      run: |
+        ruff check app/ --output-format=github
+        
+    - name: Run flake8
+      run: |
+        flake8 app/ --count --select=E9,F63,F7,F82 --show-source --statistics
+        flake8 app/ --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+        
+    - name: Check code formatting with black
+      run: |
+        black --check --diff app/
+        
+    - name: Check import ordering with isort
+      run: |
+        isort --check-only --diff app/
+
+  test:
+    name: "🧪 Unit Tests"
+    runs-on: ubuntu-latest
+    
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: test_password
+          MYSQL_DATABASE: expense_tracker_test
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-test-${{ hashFiles('requirements.txt', 'requirements-test.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-test-
+          ${{ runner.os }}-pip-
+          
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-cov pytest-asyncio httpx
+        
+    - name: Set up test environment
+      run: |
+        echo "MYSQL_HOST=localhost" >> .env
+        echo "MYSQL_PORT=3306" >> .env  
+        echo "MYSQL_USER=root" >> .env
+        echo "MYSQL_PASSWORD=test_password" >> .env
+        echo "MYSQL_DATABASE=expense_tracker_test" >> .env
+        echo "SECRET_KEY=test_secret_key_for_ci_testing_only" >> .env
+        echo "ALGORITHM=HS256" >> .env
+        echo "ACCESS_TOKEN_EXPIRE_MINUTES=30" >> .env
+        
+    - name: Wait for MySQL to be ready
+      run: |
+        while ! mysqladmin ping -h 127.0.0.1 -u root -ptest_password --silent; do
+          echo "Waiting for MySQL..."
+          sleep 2
+        done
+        echo "MySQL is ready!"
+        
+    - name: Initialize test database
+      run: |
+        python setup_database.py
+        
+    - name: Run tests with coverage
+      run: |
+        pytest tests/ --cov=app --cov-report=xml --cov-report=html --cov-report=term-missing -v
+        
+    - name: Upload coverage to artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: coverage-report
+        path: |
+          coverage.xml
+          htmlcov/
+        retention-days: 30
+
+  security:
+    name: "🔒 Security Scan"
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        
+    - name: Install security tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install bandit safety
+        
+    - name: Run bandit security scan
+      run: |
+        bandit -r app/ -f json -o bandit-report.json || true
+        bandit -r app/ --severity-level medium
+        
+    - name: Check for security vulnerabilities in dependencies
+      run: |
+        safety check --json --output safety-report.json || true
+        safety check
+        
+    - name: Upload security reports
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: security-reports
+        path: |
+          bandit-report.json
+          safety-report.json
+        retention-days: 30
+
+  docker:
+    name: "🐳 Docker Build & Test"
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+      
+    - name: Build Docker image
+      run: |
+        docker build -t expense-tracker:${{ github.sha }} .
+        
+    - name: Test Docker image
+      run: |
+        # Start the container with test configuration
+        docker run -d --name test-container \
+          -e MYSQL_HOST=host.docker.internal \
+          -e MYSQL_USER=root \
+          -e MYSQL_PASSWORD=test_password \
+          -e MYSQL_DATABASE=expense_tracker_test \
+          -e SECRET_KEY=test_secret_key \
+          -p 8000:8000 \
+          expense-tracker:${{ github.sha }}
+          
+        # Wait for container to start
+        sleep 10
+        
+        # Test health endpoint
+        curl -f http://localhost:8000/docs || exit 1
+        
+        # Stop container
+        docker stop test-container
+        docker rm test-container
+        
+    - name: Run container structure test
+      run: |
+        # Install container-structure-test
+        curl -LO https://storage.googleapis.com/container-structure-test/latest/container-structure-test-linux-amd64
+        chmod +x container-structure-test-linux-amd64
+        
+        # Create test config
+        cat > container-structure-test.yaml << EOF
+        schemaVersion: 2.0.0
+        commandTests:
+          - name: "Python is installed"
+            command: "python"
+            args: ["--version"]
+            expectedOutput: ["Python 3.*"]
+        fileExistenceTests:
+          - name: 'App directory exists'
+            path: '/app'
+            shouldExist: true
+          - name: 'Requirements file exists'
+            path: '/app/requirements.txt'
+            shouldExist: true
+        EOF
+        
+        # Run tests
+        ./container-structure-test-linux-amd64 test --image expense-tracker:${{ github.sha }} --config container-structure-test.yaml
+
+  integration:
+    name: "🔗 Integration Tests"
+    runs-on: ubuntu-latest
+    needs: [lint, test]
+    
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: test_password
+          MYSQL_DATABASE: expense_tracker_test
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-asyncio httpx
+        
+    - name: Set up test environment
+      run: |
+        echo "MYSQL_HOST=localhost" >> .env
+        echo "MYSQL_PORT=3306" >> .env  
+        echo "MYSQL_USER=root" >> .env
+        echo "MYSQL_PASSWORD=test_password" >> .env
+        echo "MYSQL_DATABASE=expense_tracker_test" >> .env
+        echo "SECRET_KEY=test_secret_key_for_ci_testing_only" >> .env
+        echo "ALGORITHM=HS256" >> .env
+        echo "ACCESS_TOKEN_EXPIRE_MINUTES=30" >> .env
+        
+    - name: Initialize database
+      run: |
+        python setup_database.py
+        
+    - name: Run existing integration tests
+      run: |
+        python test_api_connection.py || true
+        python test_mysql.py
+        python test_analytics_basic.py || true
+        
+    - name: Start application for API testing
+      run: |
+        uvicorn app.main:app --host 0.0.0.0 --port 8000 &
+        sleep 5
+        
+    - name: Test API endpoints
+      run: |
+        # Test health/docs endpoint
+        curl -f http://localhost:8000/docs
+        
+        # Test public endpoints
+        curl -f http://localhost:8000/ || echo "Root endpoint not available"
+        
+        # Test authentication endpoints (should return 401 or method not allowed)
+        curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/auth/me | grep -E "401|405"
+
+  performance:
+    name: "⚡ Performance Tests"
+    runs-on: ubuntu-latest
+    needs: [test]
+    
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: test_password
+          MYSQL_DATABASE: expense_tracker_test
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install locust
+        
+    - name: Set up test environment
+      run: |
+        echo "MYSQL_HOST=localhost" >> .env
+        echo "MYSQL_PORT=3306" >> .env  
+        echo "MYSQL_USER=root" >> .env
+        echo "MYSQL_PASSWORD=test_password" >> .env
+        echo "MYSQL_DATABASE=expense_tracker_test" >> .env
+        echo "SECRET_KEY=test_secret_key_for_ci_testing_only" >> .env
+        echo "ALGORITHM=HS256" >> .env
+        echo "ACCESS_TOKEN_EXPIRE_MINUTES=30" >> .env
+        
+    - name: Initialize database
+      run: |
+        python setup_database.py
+        
+    - name: Start application
+      run: |
+        uvicorn app.main:app --host 0.0.0.0 --port 8000 &
+        sleep 5
+        
+    - name: Basic performance test
+      run: |
+        # Simple load test using curl
+        echo "Running basic performance test..."
+        for i in {1..10}; do
+          time curl -s http://localhost:8000/docs > /dev/null
+        done
+        
+        echo "Performance test completed"
+
+  notify:
+    name: "📢 Notify Results"
+    runs-on: ubuntu-latest
+    needs: [lint, test, security, docker, integration, performance]
+    if: always()
+    
+    steps:
+    - name: Notify success
+      if: ${{ needs.lint.result == 'success' && needs.test.result == 'success' && needs.security.result == 'success' && needs.docker.result == 'success' && needs.integration.result == 'success' && needs.performance.result == 'success' }}
+      run: |
+        echo "🎉 All CI/CD pipeline steps completed successfully!"
+        echo "✅ Linting: Passed"
+        echo "✅ Tests: Passed"  
+        echo "✅ Security: Passed"
+        echo "✅ Docker: Passed"
+        echo "✅ Integration: Passed"
+        echo "✅ Performance: Passed"
+        
+    - name: Notify failure
+      if: ${{ needs.lint.result == 'failure' || needs.test.result == 'failure' || needs.security.result == 'failure' || needs.docker.result == 'failure' || needs.integration.result == 'failure' || needs.performance.result == 'failure' }}
+      run: |
+        echo "❌ CI/CD pipeline failed!"
+        echo "Linting: ${{ needs.lint.result }}"
+        echo "Tests: ${{ needs.test.result }}"
+        echo "Security: ${{ needs.security.result }}"
+        echo "Docker: ${{ needs.docker.result }}"
+        echo "Integration: ${{ needs.integration.result }}"
+        echo "Performance: ${{ needs.performance.result }}"
+        exit 1

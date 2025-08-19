@@ -1,0 +1,49 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mysql-data-pvc
+  namespace: expense-tracker
+  labels:
+    app: expense-tracker
+    component: database
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: default  # Change to your preferred storage class
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: expense-tracker-uploads-pvc
+  namespace: expense-tracker
+  labels:
+    app: expense-tracker
+    component: backend
+spec:
+  accessModes:
+  - ReadWriteMany  # Allows multiple pods to access uploads
+  resources:
+    requests:
+      storage: 5Gi
+  storageClassName: default  # Change to your preferred storage class
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: expense-tracker-logs-pvc
+  namespace: expense-tracker
+  labels:
+    app: expense-tracker
+    component: backend
+spec:
+  accessModes:
+  - ReadWriteMany  # Allows multiple pods to write logs
+  resources:
+    requests:
+      storage: 2Gi
+  storageClassName: default  # Change to your preferred storage class

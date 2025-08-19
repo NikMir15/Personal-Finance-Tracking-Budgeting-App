@@ -1,0 +1,956 @@
+{% extends "base_enhanced.html" %}
+
+{% block title %}Welcome Back - Expense Tracker{% endblock %}
+
+{% block description %}Sign in to your Expense Tracker account to manage your finances and track expenses{% endblock %}
+
+{% block extra_head %}
+<style>
+    /* ========================================
+       LOGIN PAGE SPECIFIC STYLES
+    ======================================== */
+    
+    body {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+    }
+    
+    .login-container {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+        position: relative;
+    }
+    
+    .bg-pattern {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M20 20h60v60H20z' fill='none' stroke='rgba(255,255,255,0.05)' stroke-width='1'/%3E%3C/svg%3E") repeat;
+        z-index: 0;
+    }
+    
+    .login-card {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(20px);
+        border-radius: 20px;
+        padding: 2.5rem;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        width: 100%;
+        max-width: 450px;
+        position: relative;
+        z-index: 1;
+        animation: fadeInUp 0.6s ease-out;
+    }
+    
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    .login-header {
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+    
+    .logo-section {
+        margin-bottom: 1.5rem;
+    }
+    
+    .logo-wrapper {
+        display: inline-block;
+        position: relative;
+        margin-bottom: 1rem;
+    }
+    
+    .logo-icon {
+        font-size: 3rem;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        position: relative;
+        z-index: 1;
+        animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+    }
+    
+    .brand-title {
+        font-size: 1.8rem;
+        font-weight: 700;
+        color: #2c3e50;
+        margin: 0;
+        margin-bottom: 0.25rem;
+    }
+    
+    .brand-tagline {
+        color: #6c757d;
+        margin: 0;
+        font-size: 0.9rem;
+    }
+    
+    .welcome-text h2 {
+        color: #2c3e50;
+        font-size: 1.5rem;
+        font-weight: 600;
+        margin: 0 0 0.5rem 0;
+    }
+    
+    .welcome-text p {
+        color: #6c757d;
+        margin: 0;
+        font-size: 1rem;
+    }
+    
+    .login-form {
+        margin-bottom: 1.5rem;
+    }
+    
+    .form-group {
+        margin-bottom: 1.5rem;
+        position: relative;
+    }
+    
+    .form-label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 600;
+        color: #495057;
+        font-size: 0.95rem;
+    }
+    
+    .form-label .required {
+        color: #e74c3c;
+        margin-left: 2px;
+    }
+    
+    .form-control {
+        width: 100%;
+        padding: 0.875rem 1rem;
+        border: 2px solid #e9ecef;
+        border-radius: 10px;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+        background: #fff;
+    }
+    
+    .form-control:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+        outline: none;
+        transform: translateY(-1px);
+    }
+    
+    .form-control.is-invalid {
+        border-color: #e74c3c;
+        background-image: none;
+    }
+    
+    .form-control.is-valid {
+        border-color: #27ae60;
+        background-image: none;
+    }
+    
+    .input-group {
+        position: relative;
+    }
+    
+    .input-group-text {
+        background: #f8f9fa;
+        border: 2px solid #e9ecef;
+        border-right: none;
+        border-radius: 10px 0 0 10px;
+        padding: 0.875rem 1rem;
+        color: #6c757d;
+    }
+    
+    .input-group .form-control {
+        border-left: none;
+        border-radius: 0 10px 10px 0;
+    }
+    
+    .input-group:focus-within .input-group-text {
+        border-color: #667eea;
+        color: #667eea;
+    }
+    
+    .password-toggle {
+        position: absolute;
+        right: 1rem;
+        top: 50%;
+        transform: translateY(-50%);
+        background: none;
+        border: none;
+        color: #6c757d;
+        cursor: pointer;
+        padding: 0.25rem;
+        border-radius: 4px;
+        transition: color 0.2s ease;
+    }
+    
+    .password-toggle:hover,
+    .password-toggle:focus {
+        color: #495057;
+        outline: 2px solid #667eea;
+        outline-offset: 2px;
+    }
+    
+    .form-help {
+        font-size: 0.875rem;
+        color: #6c757d;
+        margin-top: 0.25rem;
+        display: block;
+    }
+    
+    .invalid-feedback {
+        display: block;
+        color: #e74c3c;
+        font-size: 0.875rem;
+        margin-top: 0.25rem;
+        font-weight: 500;
+    }
+    
+    .valid-feedback {
+        display: block;
+        color: #27ae60;
+        font-size: 0.875rem;
+        margin-top: 0.25rem;
+        font-weight: 500;
+    }
+    
+    .btn-login {
+        width: 100%;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        border: none;
+        border-radius: 10px;
+        padding: 1rem;
+        font-size: 1rem;
+        font-weight: 600;
+        color: white;
+        transition: all 0.3s ease;
+        margin-bottom: 1rem;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .btn-login::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+        transition: left 0.5s;
+    }
+    
+    .btn-login:hover::before {
+        left: 100%;
+    }
+    
+    .btn-login:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+        color: white;
+    }
+    
+    .btn-login:focus {
+        color: white;
+        box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.3);
+    }
+    
+    .btn-login:active {
+        transform: translateY(0);
+    }
+    
+    .btn-login:disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
+        transform: none;
+    }
+    
+    .remember-me {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .form-check-input {
+        width: 1.25rem;
+        height: 1.25rem;
+        border: 2px solid #dee2e6;
+        border-radius: 4px;
+        background: #fff;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    
+    .form-check-input:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+        outline: none;
+    }
+    
+    .form-check-input:checked {
+        background-color: #667eea;
+        border-color: #667eea;
+    }
+    
+    .form-check-label {
+        color: #495057;
+        font-size: 0.95rem;
+        cursor: pointer;
+    }
+    
+    .auth-links {
+        text-align: center;
+        padding-top: 1.5rem;
+        border-top: 1px solid #e9ecef;
+    }
+    
+    .auth-links p {
+        margin: 0 0 1rem 0;
+        color: #6c757d;
+    }
+    
+    .auth-links a {
+        color: #667eea;
+        text-decoration: none;
+        font-weight: 600;
+        transition: color 0.2s ease;
+        border-radius: 4px;
+        padding: 0.25rem 0.5rem;
+    }
+    
+    .auth-links a:hover,
+    .auth-links a:focus {
+        color: #5a6fd8;
+        outline: 2px solid #667eea;
+        outline-offset: 2px;
+    }
+    
+    .forgot-password {
+        text-align: center;
+        margin-bottom: 1rem;
+    }
+    
+    .forgot-password a {
+        color: #6c757d;
+        text-decoration: none;
+        font-size: 0.9rem;
+        transition: color 0.2s ease;
+        border-radius: 4px;
+        padding: 0.25rem 0.5rem;
+    }
+    
+    .forgot-password a:hover,
+    .forgot-password a:focus {
+        color: #495057;
+        outline: 2px solid #667eea;
+        outline-offset: 2px;
+    }
+    
+    /* Mobile optimizations */
+    @media (max-width: 576px) {
+        .login-container {
+            padding: 0.5rem;
+            align-items: flex-start;
+            padding-top: 2rem;
+        }
+        
+        .login-card {
+            padding: 2rem 1.5rem;
+            border-radius: 15px;
+        }
+        
+        .brand-title {
+            font-size: 1.5rem;
+        }
+        
+        .welcome-text h2 {
+            font-size: 1.3rem;
+        }
+        
+        .logo-icon {
+            font-size: 2.5rem;
+        }
+        
+        .form-control,
+        .btn-login {
+            padding: 1rem 0.875rem;
+        }
+    }
+    
+    /* High contrast mode */
+    @media (prefers-contrast: high) {
+        .login-card {
+            background: #fff;
+            border: 3px solid #000;
+        }
+        
+        .form-control {
+            border: 3px solid #000;
+        }
+        
+        .btn-login {
+            background: #000;
+            border: 2px solid #000;
+        }
+    }
+    
+    /* Reduced motion */
+    @media (prefers-reduced-motion: reduce) {
+        .login-card,
+        .logo-icon,
+        .btn-login,
+        .form-control {
+            animation: none;
+            transition: none;
+        }
+        
+        .btn-login::before {
+            transition: none;
+        }
+    }
+    
+    /* Focus improvements for keyboard navigation */
+    *:focus {
+        outline: 3px solid #005fcc !important;
+        outline-offset: 2px !important;
+    }
+    
+    /* Loading state for form */
+    .form-loading {
+        position: relative;
+        pointer-events: none;
+    }
+    
+    .form-loading::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(255, 255, 255, 0.8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 10px;
+        z-index: 10;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="login-container">
+    <!-- Background Pattern -->
+    <div class="bg-pattern" aria-hidden="true"></div>
+    
+    <!-- Main Login Card -->
+    <div class="login-card">
+        <!-- Header Section -->
+        <header class="login-header">
+            <div class="logo-section">
+                <div class="logo-wrapper">
+                    <div class="logo-icon" aria-hidden="true">💰</div>
+                </div>
+                <h1 class="brand-title">Expense Tracker</h1>
+                <p class="brand-tagline">Smart Financial Management</p>
+            </div>
+            <div class="welcome-text">
+                <h2>Welcome Back!</h2>
+                <p>Sign in to continue managing your expenses</p>
+            </div>
+        </header>
+        
+        <!-- Login Form with Enhanced Accessibility -->
+        <form id="loginForm" 
+              class="login-form" 
+              novalidate 
+              role="form"
+              aria-labelledby="login-form-title"
+              aria-describedby="login-form-help">
+            
+            <h3 id="login-form-title" class="sr-only">Login Form</h3>
+            <p id="login-form-help" class="sr-only">
+                Enter your username and password to sign in to your account
+            </p>
+            
+            <!-- Username Field -->
+            <div class="form-group">
+                <label for="username" class="form-label">
+                    <i class="bi bi-person" aria-hidden="true"></i>
+                    Username
+                    <span class="required" aria-label="required">*</span>
+                </label>
+                <div class="input-group">
+                    <span class="input-group-text" aria-hidden="true">
+                        <i class="bi bi-person"></i>
+                    </span>
+                    <input type="text" 
+                           class="form-control" 
+                           id="username" 
+                           name="username" 
+                           required
+                           autocomplete="username"
+                           aria-describedby="username-help username-feedback"
+                           placeholder="Enter your username">
+                </div>
+                <span id="username-help" class="form-help">
+                    The username you created when you signed up
+                </span>
+                <div id="username-feedback" class="invalid-feedback" role="alert" aria-live="polite">
+                    <!-- Error message will be inserted here -->
+                </div>
+            </div>
+            
+            <!-- Password Field -->
+            <div class="form-group">
+                <label for="password" class="form-label">
+                    <i class="bi bi-lock" aria-hidden="true"></i>
+                    Password
+                    <span class="required" aria-label="required">*</span>
+                </label>
+                <div class="input-group">
+                    <span class="input-group-text" aria-hidden="true">
+                        <i class="bi bi-lock"></i>
+                    </span>
+                    <input type="password" 
+                           class="form-control" 
+                           id="password" 
+                           name="password" 
+                           required
+                           autocomplete="current-password"
+                           aria-describedby="password-help password-feedback"
+                           placeholder="Enter your password">
+                    <button type="button" 
+                            class="password-toggle"
+                            onclick="togglePasswordVisibility('password')"
+                            aria-label="Toggle password visibility"
+                            tabindex="0">
+                        <i class="bi bi-eye" aria-hidden="true"></i>
+                    </button>
+                </div>
+                <span id="password-help" class="form-help">
+                    Your account password
+                </span>
+                <div id="password-feedback" class="invalid-feedback" role="alert" aria-live="polite">
+                    <!-- Error message will be inserted here -->
+                </div>
+            </div>
+            
+            <!-- Remember Me Checkbox -->
+            <div class="remember-me">
+                <input type="checkbox" 
+                       class="form-check-input" 
+                       id="remember-me" 
+                       name="remember-me"
+                       aria-describedby="remember-help">
+                <label for="remember-me" class="form-check-label">
+                    Remember me for 30 days
+                </label>
+                <span id="remember-help" class="sr-only">
+                    Check this to stay logged in on this device for 30 days
+                </span>
+            </div>
+            
+            <!-- Submit Button -->
+            <button type="submit" 
+                    class="btn btn-login"
+                    aria-describedby="login-button-help">
+                <i class="bi bi-box-arrow-in-right" aria-hidden="true"></i>
+                Sign In
+            </button>
+            <span id="login-button-help" class="sr-only">
+                Click to sign in to your account
+            </span>
+            
+            <!-- Forgot Password Link -->
+            <div class="forgot-password">
+                <a href="#" 
+                   onclick="showForgotPasswordInfo(event)"
+                   aria-describedby="forgot-password-help">
+                    Forgot your password?
+                </a>
+                <span id="forgot-password-help" class="sr-only">
+                    Get help recovering your password
+                </span>
+            </div>
+        </form>
+        
+        <!-- Authentication Links -->
+        <footer class="auth-links">
+            <p>Don't have an account yet?</p>
+            <a href="/signup" 
+               aria-describedby="signup-help">
+                <i class="bi bi-person-plus" aria-hidden="true"></i>
+                Create Account
+            </a>
+            <span id="signup-help" class="sr-only">
+                Go to sign up page to create a new account
+            </span>
+        </footer>
+    </div>
+</div>
+
+<!-- Loading indicator for form submission -->
+<div id="loading-overlay" 
+     class="d-none position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center" 
+     style="background: rgba(0,0,0,0.5); z-index: 9999;"
+     role="dialog" 
+     aria-labelledby="loading-title" 
+     aria-describedby="loading-message">
+    <div class="text-center text-white">
+        <div class="spinner-border mb-3" role="status">
+            <span class="sr-only">Loading...</span>
+        </div>
+        <h4 id="loading-title">Signing you in...</h4>
+        <p id="loading-message">Please wait while we verify your credentials</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // Enhanced login functionality with accessibility and UX improvements
+    document.addEventListener('DOMContentLoaded', function() {
+        const loginForm = document.getElementById('loginForm');
+        const usernameField = document.getElementById('username');
+        const passwordField = document.getElementById('password');
+        
+        // Setup form validation
+        setupFormValidation(loginForm);
+        
+        // Setup keyboard shortcuts
+        setupKeyboardShortcuts();
+        
+        // Setup form submission
+        loginForm.addEventListener('submit', handleLogin);
+        
+        // Auto-focus username field on page load
+        usernameField.focus();
+        
+        // Setup real-time validation
+        usernameField.addEventListener('blur', function() {
+            validateUsername(this);
+        });
+        
+        passwordField.addEventListener('blur', function() {
+            validatePassword(this);
+        });
+        
+        // Clear validation on input
+        [usernameField, passwordField].forEach(field => {
+            field.addEventListener('input', function() {
+                clearFieldValidation(this);
+            });
+        });
+        
+        // Handle Enter key in password field
+        passwordField.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                loginForm.requestSubmit();
+            }
+        });
+    });
+
+    function setupFormValidation(form) {
+        // Add Bootstrap validation classes
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            if (validateLoginForm()) {
+                handleLogin(e);
+            }
+        });
+    }
+
+    function setupKeyboardShortcuts() {
+        document.addEventListener('keydown', function(e) {
+            // Alt + L to focus username field
+            if (e.altKey && e.key === 'l') {
+                e.preventDefault();
+                document.getElementById('username').focus();
+                announceToScreenReader('Username field focused');
+            }
+            
+            // Alt + P to focus password field
+            if (e.altKey && e.key === 'p') {
+                e.preventDefault();
+                document.getElementById('password').focus();
+                announceToScreenReader('Password field focused');
+            }
+        });
+    }
+
+    async function handleLogin(e) {
+        e.preventDefault();
+        
+        const form = e.target;
+        const formData = new FormData(form);
+        
+        // Validate form before submission
+        if (!validateLoginForm()) {
+            announceToScreenReader('Please fix the errors in the form');
+            return;
+        }
+        
+        // Show loading state
+        setFormLoadingState(true);
+        
+        const credentials = {
+            username: formData.get('username').trim(),
+            password: formData.get('password')
+        };
+
+        try {
+            const response = await fetch('/auth/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: new URLSearchParams(credentials)
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(extractErrorMessage(data));
+            }
+
+            // Store token
+            localStorage.setItem('token', data.access_token);
+            
+            // Show success message
+            showFlash('Login successful! Redirecting...', 'success');
+            announceToScreenReader('Login successful. Redirecting to dashboard.');
+            
+            // Redirect after a short delay
+            setTimeout(() => {
+                window.location.href = '/me';
+            }, 1500);
+
+        } catch (error) {
+            console.error('Login error:', error);
+            showFlash(error.message, 'danger');
+            announceToScreenReader(`Login failed: ${error.message}`);
+            
+            // Focus username field for retry
+            setTimeout(() => {
+                document.getElementById('username').focus();
+            }, 100);
+            
+        } finally {
+            setFormLoadingState(false);
+        }
+    }
+
+    function validateLoginForm() {
+        const username = document.getElementById('username');
+        const password = document.getElementById('password');
+        
+        let isValid = true;
+        
+        // Validate username
+        if (!validateUsername(username)) {
+            isValid = false;
+        }
+        
+        // Validate password
+        if (!validatePassword(password)) {
+            isValid = false;
+        }
+        
+        return isValid;
+    }
+
+    function validateUsername(field) {
+        const value = field.value.trim();
+        let isValid = true;
+        let message = '';
+        
+        if (!value) {
+            isValid = false;
+            message = 'Username is required';
+        } else if (value.length < 3) {
+            isValid = false;
+            message = 'Username must be at least 3 characters long';
+        } else if (value.length > 50) {
+            isValid = false;
+            message = 'Username must not exceed 50 characters';
+        } else if (!/^[a-zA-Z0-9_-]+$/.test(value)) {
+            isValid = false;
+            message = 'Username can only contain letters, numbers, underscores, and hyphens';
+        }
+        
+        updateFieldValidation(field, isValid, message);
+        return isValid;
+    }
+
+    function validatePassword(field) {
+        const value = field.value;
+        let isValid = true;
+        let message = '';
+        
+        if (!value) {
+            isValid = false;
+            message = 'Password is required';
+        } else if (value.length < 6) {
+            isValid = false;
+            message = 'Password must be at least 6 characters long';
+        }
+        
+        updateFieldValidation(field, isValid, message);
+        return isValid;
+    }
+
+    function updateFieldValidation(field, isValid, message) {
+        const feedbackElement = document.getElementById(field.id + '-feedback');
+        
+        field.classList.toggle('is-valid', isValid);
+        field.classList.toggle('is-invalid', !isValid);
+        
+        if (feedbackElement) {
+            feedbackElement.textContent = message;
+            feedbackElement.style.display = message ? 'block' : 'none';
+        }
+        
+        // Update aria-invalid attribute
+        field.setAttribute('aria-invalid', !isValid);
+        
+        return isValid;
+    }
+
+    function clearFieldValidation(field) {
+        field.classList.remove('is-valid', 'is-invalid');
+        field.setAttribute('aria-invalid', 'false');
+        
+        const feedbackElement = document.getElementById(field.id + '-feedback');
+        if (feedbackElement) {
+            feedbackElement.textContent = '';
+            feedbackElement.style.display = 'none';
+        }
+    }
+
+    function togglePasswordVisibility(fieldId) {
+        const field = document.getElementById(fieldId);
+        const button = field.parentNode.querySelector('.password-toggle');
+        const icon = button.querySelector('i');
+        
+        if (field.type === 'password') {
+            field.type = 'text';
+            icon.className = 'bi bi-eye-slash';
+            button.setAttribute('aria-label', 'Hide password');
+            announceToScreenReader('Password is now visible');
+        } else {
+            field.type = 'password';
+            icon.className = 'bi bi-eye';
+            button.setAttribute('aria-label', 'Show password');
+            announceToScreenReader('Password is now hidden');
+        }
+    }
+
+    function setFormLoadingState(isLoading) {
+        const form = document.getElementById('loginForm');
+        const submitButton = form.querySelector('button[type="submit"]');
+        const loadingOverlay = document.getElementById('loading-overlay');
+        
+        if (isLoading) {
+            form.classList.add('form-loading');
+            submitButton.disabled = true;
+            submitButton.innerHTML = '<i class="bi bi-arrow-clockwise" aria-hidden="true"></i> Signing In...';
+            loadingOverlay.classList.remove('d-none');
+            
+            // Prevent form interaction
+            const inputs = form.querySelectorAll('input, button');
+            inputs.forEach(input => {
+                input.setAttribute('tabindex', '-1');
+                input.setAttribute('aria-disabled', 'true');
+            });
+            
+        } else {
+            form.classList.remove('form-loading');
+            submitButton.disabled = false;
+            submitButton.innerHTML = '<i class="bi bi-box-arrow-in-right" aria-hidden="true"></i> Sign In';
+            loadingOverlay.classList.add('d-none');
+            
+            // Re-enable form interaction
+            const inputs = form.querySelectorAll('input, button');
+            inputs.forEach(input => {
+                input.removeAttribute('tabindex');
+                input.removeAttribute('aria-disabled');
+            });
+        }
+    }
+
+    function showForgotPasswordInfo(e) {
+        e.preventDefault();
+        showFlash('Password reset functionality coming soon. Please contact support for assistance.', 'info', 8000);
+        announceToScreenReader('Password reset functionality coming soon. Please contact support for assistance.');
+    }
+
+    function announceToScreenReader(message) {
+        const liveRegion = document.getElementById('live-region');
+        if (liveRegion) {
+            liveRegion.textContent = message;
+            setTimeout(() => {
+                liveRegion.textContent = '';
+            }, 1000);
+        }
+    }
+
+    // Handle browser autofill
+    window.addEventListener('load', function() {
+        // Check if fields are autofilled and validate them
+        setTimeout(() => {
+            const username = document.getElementById('username');
+            const password = document.getElementById('password');
+            
+            if (username.value) {
+                validateUsername(username);
+            }
+            
+            if (password.value) {
+                validatePassword(password);
+            }
+        }, 100);
+    });
+
+    // Handle visibility change (tab switching)
+    document.addEventListener('visibilitychange', function() {
+        if (!document.hidden) {
+            // Page became visible, focus username if no field is focused
+            if (!document.activeElement || document.activeElement === document.body) {
+                document.getElementById('username').focus();
+            }
+        }
+    });
+
+    // Prevent form submission with Enter key when in loading state
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && document.getElementById('loginForm').classList.contains('form-loading')) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+    });
+</script>
+{% endblock %}

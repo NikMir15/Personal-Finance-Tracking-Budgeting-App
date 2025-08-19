@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: expense-tracker
+  labels:
+    app: expense-tracker
+    environment: production
+    version: v1.0.0
+  annotations:
+    description: "Expense Tracker application namespace"
+    contact: "expense-tracker-team@example.com"

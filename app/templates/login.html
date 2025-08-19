@@ -1,0 +1,375 @@
+{% extends "base.html" %}
+
+{% block title %}Welcome Back - Expense Tracker{% endblock %}
+
+{% block content %}
+<div class="login-container">
+    <!-- Background Pattern -->
+    <div class="bg-pattern"></div>
+    
+    <!-- Main Login Card -->
+    <div class="login-card">
+        <!-- Header Section -->
+        <div class="login-header">
+            <div class="logo-section">
+                <div class="logo-wrapper">
+                    <div class="logo-icon">$</div>
+                    <div class="logo-glow"></div>
+                </div>
+                <h1 class="brand-title">Expense Tracker</h1>
+                <p class="brand-tagline">Smart Financial Management</p>
+            </div>
+            <div class="welcome-text">
+                <h2>Welcome Back!</h2>
+                <p>Sign in to continue managing your expenses</p>
+            </div>
+        </div>
+        
+        <!-- Login Form -->
+        <form id="loginForm" class="login-form">
+            <div class="form-group">
+                <div class="input-wrapper">
+                    <div class="input-icon">
+                        <i class="icon">@</i>
+                    </div>
+                    <input 
+                        type="text" 
+                        name="username" 
+                        class="form-input" 
+                        placeholder="Enter your username"
+                        autocomplete="username"
+                        required 
+                    />
+                    <div class="input-focus-border"></div>
+                </div>
+                <label class="input-label">Username</label>
+            </div>
+            
+            <div class="form-group">
+                <div class="input-wrapper">
+                    <div class="input-icon">
+                        <i class="icon">#</i>
+                    </div>
+                    <input 
+                        type="password" 
+                        name="password" 
+                        class="form-input" 
+                        placeholder="Enter your password"
+                        autocomplete="current-password"
+                        required 
+                    />
+                    <div class="input-focus-border"></div>
+                    <button type="button" class="password-toggle" onclick="togglePassword()">
+                        <i class="toggle-icon">*</i>
+                    </button>
+                </div>
+                <label class="input-label">Password</label>
+            </div>
+            
+            <div class="form-options">
+                <label class="remember-me">
+                    <input type="checkbox" name="remember" />
+                    <span class="checkmark"></span>
+                    Remember me
+                </label>
+                <a href="#" class="forgot-password">Forgot password?</a>
+            </div>
+            
+            <div class="form-actions dual">
+                <button type="submit" class="btn-login" id="loginBtn">
+                    <span class="btn-content">
+                        <span class="btn-text">Sign In</span>
+                        <span class="btn-icon">&gt;</span>
+                    </span>
+                    <div class="btn-loading">
+                        <div class="spinner"></div>
+                        <span>Signing In...</span>
+                    </div>
+                    <div class="btn-success">
+                        <span>Success!</span>
+                    </div>
+                </button>
+                <a href="/signup" class="btn btn-outline-secondary" id="signupBtn" role="button">Create Account</a>
+            </div>
+        </form>
+        
+
+        
+        <!-- Footer -->
+        <div class="login-footer">
+            <p class="signup-prompt">
+                Don't have an account? 
+                <a href="/signup" class="signup-link">
+                    <span>Create one now</span>
+                    <i class="link-arrow">&gt;</i>
+                </a>
+            </p>
+        </div>
+    </div>
+    
+    <!-- Floating Elements -->
+    <div class="floating-elements">
+        <div class="float-item float-1">$</div>
+        <div class="float-item float-2">%</div>
+        <div class="float-item float-3">$</div>
+        <div class="float-item float-4">^</div>
+    </div>
+    
+    <!-- Success Animation Overlay -->
+    <div class="success-overlay" id="successOverlay">
+        <div class="success-content">
+            <div class="success-icon">!</div>
+            <h3>Welcome Back!</h3>
+            <p>Redirecting to your dashboard...</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // Wait for base template to finish loading
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('LOGIN: DOMContentLoaded triggered');
+        
+        // Password toggle functionality
+        function togglePassword() {
+            const passwordInput = document.querySelector('input[name="password"]');
+            const toggleIcon = document.querySelector('.toggle-icon');
+            
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                toggleIcon.textContent = 'H';
+            } else {
+                passwordInput.type = 'password';
+                toggleIcon.textContent = '*';
+            }
+        }
+        
+        // Make togglePassword global
+        window.togglePassword = togglePassword;
+        
+        // Form handling
+        const form = document.getElementById('loginForm');
+        const loginBtn = document.getElementById('loginBtn');
+        
+        console.log('LOGIN: Form elements:', {
+            form: !!form,
+            loginBtn: !!loginBtn
+        });
+        
+        if (!form || !loginBtn) {
+            console.error('LOGIN: Critical elements not found!');
+            return;
+        }
+        
+        const btnContent = loginBtn.querySelector('.btn-content');
+        const btnLoading = loginBtn.querySelector('.btn-loading');
+        const btnSuccess = loginBtn.querySelector('.btn-success');
+        const successOverlay = document.getElementById('successOverlay');
+        
+        console.log('LOGIN: Button type:', loginBtn.type);
+        console.log('LOGIN: Button tag:', loginBtn.tagName);
+    
+        // Input focus effects
+        document.querySelectorAll('.form-input').forEach(input => {
+            input.addEventListener('focus', function() {
+                this.parentElement.classList.add('focused');
+            });
+            
+            input.addEventListener('blur', function() {
+                if (!this.value) {
+                    this.parentElement.classList.remove('focused');
+                }
+            });
+        });
+        
+        console.log('LOGIN: Adding form submit listener...');
+        
+        // Force manual login handling since form submit isn't working
+        loginBtn.addEventListener('click', async function(e) {
+            console.log('LOGIN: Button clicked directly!');
+            e.preventDefault(); // Prevent any default behavior
+            
+            console.log('LOGIN: Handling login manually...');
+            
+            // Get form data directly
+            const usernameInput = form.querySelector('input[name="username"]');
+            const passwordInput = form.querySelector('input[name="password"]');
+            
+            const username = usernameInput?.value || '';
+            const password = passwordInput?.value || '';
+            
+            console.log('LOGIN: Manual form data:', {username, password});
+            
+            // Validate
+            if (!username || username.trim().length === 0) {
+                showFlash('Error: Please enter your username', 'danger');
+                return;
+            }
+            
+            if (!password || password.length === 0) {
+                showFlash('Error: Please enter your password', 'danger');
+                return;
+            }
+            
+            // Show loading state
+            console.log('LOGIN: Showing loading...');
+            loginBtn.disabled = true;
+            btnContent.style.display = 'none';
+            btnLoading.style.display = 'flex';
+            
+            try {
+                console.log('LOGIN: Making API call...');
+                const res = await fetch('/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({username, password}),
+                });
+                
+                console.log('LOGIN: API response:', res.status, res.ok);
+                
+                if (res.ok) {
+                    const json = await res.json();
+                    console.log('LOGIN: Success!', json);
+                    localStorage.setItem('token', json.access_token);
+                    
+                    // Show success state
+                    btnLoading.style.display = 'none';
+                    btnSuccess.style.display = 'flex';
+                    
+                    // Show success overlay
+                    successOverlay.classList.add('show');
+                    
+                    // Redirect after animation
+                    setTimeout(() => {
+                        console.log('LOGIN: Redirecting...');
+                        window.location.href = '/me';
+                    }, 2000);
+                    
+                } else {
+                    console.log('LOGIN: Failed with status:', res.status);
+                    let err;
+                    try { err = await res.json(); } catch (_) {}
+                    showFlash('Error: ' + extractErrorMessage(err), 'danger');
+                    
+                    // Reset button state
+                    resetButtonState();
+                }
+            } catch (err) {
+                console.error('LOGIN: Network error:', err);
+                showFlash('Error: Network error occurred', 'danger');
+                resetButtonState();
+            }
+        });
+        
+        // Reset button state function
+        function resetButtonState() {
+            loginBtn.disabled = false;
+            btnLoading.style.display = 'none';
+            btnSuccess.style.display = 'none';
+            btnContent.style.display = 'flex';
+        }
+        
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            console.log('LOGIN: Form submitted!');
+            
+            // Client-side validation before sending to server
+            const formData = new FormData(form);
+            const data = Object.fromEntries(formData.entries());
+            
+            // Debug: Check actual input values
+            const usernameInput = form.querySelector('input[name="username"]');
+            const passwordInput = form.querySelector('input[name="password"]');
+            
+            console.log('LOGIN: Form data:', data);
+            console.log('LOGIN: Username input value:', usernameInput?.value);
+            console.log('LOGIN: Password input value:', passwordInput?.value);
+            console.log('LOGIN: Username element:', usernameInput);
+            console.log('LOGIN: Password element:', passwordInput);
+            
+            // Validate username
+            if (!data.username || data.username.trim().length === 0) {
+                showFlash('Error: Please enter your username', 'danger');
+                return;
+            }
+            
+            // Validate password
+            if (!data.password || data.password.length === 0) {
+                showFlash('Error: Please enter your password', 'danger');
+                return;
+            }
+            
+            // Show loading state
+            console.log('LOGIN: Showing loading...');
+            loginBtn.disabled = true;
+            btnContent.style.display = 'none';
+            btnLoading.style.display = 'flex';
+            
+            try {
+                console.log('LOGIN: Making API call...');
+                const res = await fetch('/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data),
+                });
+                
+                console.log('LOGIN: API response:', res.status, res.ok);
+                
+                if (res.ok) {
+                    const json = await res.json();
+                    console.log('LOGIN: Success!', json);
+                    localStorage.setItem('token', json.access_token);
+                    
+                    // Show success state
+                    btnLoading.style.display = 'none';
+                    btnSuccess.style.display = 'flex';
+                    
+                    // Show success overlay
+                    successOverlay.classList.add('show');
+                    
+                    // Redirect after animation
+                    setTimeout(() => {
+                        console.log('LOGIN: Redirecting...');
+                        window.location.href = '/me';
+                    }, 2000);
+                    
+                } else {
+                    console.log('LOGIN: Failed with status:', res.status);
+                    let err;
+                    try { err = await res.json(); } catch (_) {}
+                    showFlash('Error: ' + extractErrorMessage(err), 'danger');
+                    
+                    // Reset button state
+                    resetButtonState();
+                }
+            } catch (err) {
+                console.error('LOGIN: Network error:', err);
+                showFlash('Error: Network error occurred', 'danger');
+                resetButtonState();
+            }
+        });
+        
+        function resetButtonState() {
+            loginBtn.disabled = false;
+            btnLoading.style.display = 'none';
+            btnSuccess.style.display = 'none';
+            btnContent.style.display = 'flex';
+        }
+        
+
+    
+        // Forgot password (demo)
+        const forgotLink = document.querySelector('.forgot-password');
+        if (forgotLink) {
+            forgotLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                showFlash('Info: Password reset feature coming soon!', 'info');
+            });
+        }
+        
+        console.log('LOGIN: Form initialization complete!');
+    }); // End DOMContentLoaded
+</script>
+{% endblock %}

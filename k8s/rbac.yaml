@@ -1,0 +1,43 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: expense-tracker-sa
+  namespace: expense-tracker
+  labels:
+    app: expense-tracker
+    component: security
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: expense-tracker
+  name: expense-tracker-role
+  labels:
+    app: expense-tracker
+    component: security
+rules:
+- apiGroups: [""]
+  resources: ["configmaps", "secrets"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list", "watch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: expense-tracker-rolebinding
+  namespace: expense-tracker
+  labels:
+    app: expense-tracker
+    component: security
+subjects:
+- kind: ServiceAccount
+  name: expense-tracker-sa
+  namespace: expense-tracker
+roleRef:
+  kind: Role
+  name: expense-tracker-role
+  apiGroup: rbac.authorization.k8s.io
