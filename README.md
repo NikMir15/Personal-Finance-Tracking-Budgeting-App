@@ -373,7 +373,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES=30
 - **Artifact downloads** for coverage and security reports
 - **Badge status** visible in README
 
-## 🐳 Docker Deployment (CD Pipeline)
+## Docker Deployment (CD Pipeline)
 
 The project includes a comprehensive Docker deployment pipeline that automatically builds and publishes container images.
 
