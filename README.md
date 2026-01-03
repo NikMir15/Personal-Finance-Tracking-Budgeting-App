@@ -93,7 +93,7 @@ ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=30
 ```
 
-**⚠️ Security Notes:**
+**Security Notes:**
 - Never commit your `.env` file to version control
 - Use a strong, unique password for MySQL
 - Generate a cryptographically secure secret key for JWT
@@ -203,7 +203,7 @@ The application uses:
 - **Pydantic** for data validation
 - **Jinja2** for templating
 
-## 🚀 CI/CD Pipeline
+## CI/CD Pipeline
 
 This project includes a comprehensive CI/CD pipeline using GitHub Actions that runs on every push and pull request.
 
@@ -211,12 +211,12 @@ This project includes a comprehensive CI/CD pipeline using GitHub Actions that r
 
 The CI/CD pipeline consists of multiple parallel jobs:
 
-1. **🔍 Code Linting** - Code quality checks
-2. **🧪 Unit Tests** - Comprehensive test suite with coverage
-3. **🔒 Security Scan** - Security vulnerability scanning
-4. **🐳 Docker Build & Test** - Container build and structure tests
-5. **🔗 Integration Tests** - End-to-end API testing
-6. **⚡ Performance Tests** - Basic performance validation
+1. **Code Linting** - Code quality checks
+2. **Unit Tests** - Comprehensive test suite with coverage
+3. **Security Scan** - Security vulnerability scanning
+4. **Docker Build & Test** - Container build and structure tests
+5. **Integration Tests** - End-to-end API testing
+6. **Performance Tests** - Basic performance validation
 
 ### Linting & Code Quality
 
@@ -469,7 +469,7 @@ make docker-restore   # Restore from backup
 
 See [DEPLOYMENT.md](DEPLOYMENT.md) for comprehensive deployment documentation.
 
-## ☸️ Kubernetes Deployment
+## Kubernetes Deployment
 
 The project includes comprehensive Kubernetes manifests for cloud-native deployment with proper externalization of configuration and secrets.
 
